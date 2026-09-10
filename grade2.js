@@ -175,31 +175,36 @@
       }
     },
     {
-      id: 'v-carry', unit: '1 100以内数的加减法（二）', icon: '🔄', name: '进位与退位',
-      desc: '判断要不要进 / 退位',
+      id: 'v-carry', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '进位还是不进位',
+      desc: '拖筹码判断要不要进 / 退位', kind: 'drag', round: 6,
       gen() {
+        // 关键：进位和不进位各占一半，答案才会真的变化
+        const need = rnd(2) === 0;
         const add = rnd(2) === 0;
+        let a, b;
         if (add) {
-          // 构造个位相加 ≥10 的加法
-          const o1 = ri(3, 9), o2 = ri(10 - o1, 9);
-          const t1 = ri(1, 5), t2 = ri(1, 3);
-          const a = t1 * 10 + o1, b = t2 * 10 + o2;
-          const ans = a + b;
-          return {
-            prompt: vertical(a, b, '+') +
-              '<div class="ask">个位 ' + o1 + ' + ' + o2 + ' = ' + (o1 + o2) + '<br>' +
-              '个位满十，要向十位进几？</div>',
-            options: shuffle(['1', '0', '2', '10']), ans: '1'
-          };
+          if (need) {                       // 个位相加满十
+            const o1 = ri(3, 9), o2 = ri(10 - o1, 9);
+            a = ri(1, 5) * 10 + o1; b = ri(1, 3) * 10 + o2;
+          } else {                          // 个位相加不满十
+            const o1 = ri(1, 4), o2 = ri(1, 9 - o1);
+            a = ri(1, 5) * 10 + o1; b = ri(1, 3) * 10 + o2;
+          }
+        } else {
+          // 减法：十位必须保证「被减数 > 减数」，否则会出现 25-32 这种负数
+          const ta = ri(4, 9), tb = ri(1, ta - 1);
+          if (need) {                       // 个位不够减
+            const o1 = ri(1, 4), o2 = ri(o1 + 2, 9);
+            a = ta * 10 + o1; b = tb * 10 + o2;
+          } else {                          // 个位够减
+            const o1 = ri(5, 9), o2 = ri(1, o1 - 1);
+            a = ta * 10 + o1; b = tb * 10 + o2;
+          }
         }
-        const o1 = ri(1, 4), o2 = ri(o1 + 2, 9);
-        const t1 = ri(4, 9), t2 = ri(1, 3);
-        const a = t1 * 10 + o1, b = t2 * 10 + o2;
         return {
-          prompt: vertical(a, b, '−') +
-            '<div class="ask">个位 ' + o1 + ' 不够减 ' + o2 + '<br>' +
-            '要从十位退几当十？</div>',
-          options: shuffle(['1', '0', '2', '10']), ans: '1'
+          kind: 'drag', type: 'carry',
+          prompt: add ? '个位相加，需要进位吗？' : '个位不够减，需要退位吗？',
+          a: a, b: b, op: add ? '+' : '\u2212', need: need
         };
       }
     },
@@ -236,46 +241,55 @@
       }
     },
     {
-      id: 'v-check', unit: '1 100以内数的加减法（二）', icon: '✅', name: '加减法的验算',
-      desc: '用减法检验加法',
+      id: 'v-check', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '验算（拖答案）',
+      desc: '用减法检验加法', kind: 'drag', round: 6,
       gen() {
-        const a = ri(21, 60), b = ri(11, 99 - a), sum = a + b;
-        const correct = sum + ' − ' + b + ' = ' + a;
+        const a = ri(21, 79), b = ri(11, Math.min(60, 99 - a));
+        const sum = a + b;
+        const set = new Set([a]);
+        let g = 0;
+        while (set.size < 4 && g++ < 60) {
+          const v = a + (rnd(2) ? 1 : -1) * ri(1, 9);
+          if (v > 0 && v !== a) set.add(v);
+        }
         return {
-          prompt: '<div class="ask">小明算：' + a + ' + ' + b + ' = ' + sum + '<br>' +
-            '下面哪个式子可以用来验算？</div>',
-          options: strOptions(correct, [
-            sum + ' + ' + b + ' = ' + a,
-            a + ' − ' + b + ' = ' + sum,
-            sum + ' + ' + a + ' = ' + b
-          ]),
-          ans: correct
+          kind: 'drag', type: 'eqfill',
+          prompt: '用减法验算：' + a + ' + ' + b + ' = ' + sum +
+            '<br>那 ' + sum + ' \u2212 ' + b + ' 应该得几？',
+          expr: sum + ' \u2212 ' + b, ans: a,
+          digits: shuffle(Array.from(set))
         };
       }
     },
     {
-      id: 'v-estimate', unit: '1 100以内数的加减法（二）', icon: '📏', name: '加减法的估算',
-      desc: '估成整十数再算',
+      id: 'v-estimate', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '估算（拖答案）',
+      desc: '先估成整十数，再拖结果', kind: 'drag', round: 6,
       gen() {
         const add = rnd(2) === 0;
-        const t1 = ri(2, 6), t2 = ri(2, 3);
-        const o1 = ri(1, 4), o2 = ri(1, 4);
-        const a = t1 * 10 + o1, b = t2 * 10 + o2;
-        if (add) {
-          const ans = (t1 + t2) * 10;
-          return {
-            prompt: '<div class="ask">' + a + ' + ' + b + ' 大约是多少？<br>' +
-              '<span class="hint">' + a + ' 接近 ' + t1 * 10 + '，' + b + ' 接近 ' + t2 * 10 + '</span></div>',
-            options: tensOptions(ans), ans: String(ans)
-          };
+        let a = ri(21, 78), b = ri(11, 59);
+        if (!add && b > a - 10) b = ri(11, a - 12);      // 保证减法够减
+        const ra = Math.round(a / 10) * 10, rb = Math.round(b / 10) * 10;
+        const est = add ? ra + rb : ra - rb;
+        const exact = add ? a + b : a - b;
+        // 把精确答案也放进去，逼孩子区分「≈」和「＝」
+        const set = new Set([est, exact]);
+        const DELTAS = [-20, -10, 10, 20, -30, 30];
+        let g = 0;
+        while (set.size < 4 && g++ < 140) {
+          const v = est + DELTAS[(Math.random() * DELTAS.length) | 0];
+          if (v > 0 && v !== est) set.add(v);
         }
-        const tt1 = ri(5, 9), tt2 = ri(2, 3);
-        const a2 = tt1 * 10 + ri(1, 4), b2 = tt2 * 10 + ri(1, 4);
-        const ans = (tt1 - tt2) * 10;
+        // 兜底：还差就补相邻的数，保证一定有 4 个可拖数字
+        let kk = 1;
+        while (set.size < 4 && kk < 25) {
+          if (est + kk > 0) set.add(est + kk);
+          kk++;
+        }
         return {
-          prompt: '<div class="ask">' + a2 + ' − ' + b2 + ' 大约是多少？<br>' +
-            '<span class="hint">都估成整十数再减</span></div>',
-          options: tensOptions(ans), ans: String(ans)
+          kind: 'drag', type: 'eqfill',
+          prompt: '先估成整十数：' + a + ' \u2248 ' + ra + '，' + b + ' \u2248 ' + rb,
+          expr: ra + (add ? ' + ' : ' \u2212 ') + rb, ans: est,
+          digits: shuffle(Array.from(set))
         };
       }
     },
