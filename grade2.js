@@ -260,38 +260,22 @@
       }
     },
     {
-      id: 'rmb-conv', unit: '2 欢乐购物街', icon: '🔁', name: '人民币的换算',
-      desc: '1元 = 10角',
+      id: 'rmb-conv', unit: '2 欢乐购物街', icon: '🔁', name: '人民币换算连线',
+      desc: '把等值的钱连起来', kind: 'drag', round: 5,
       gen() {
-        const k = rnd(3);
-        if (k === 0) {
-          const y = ri(2, 9), ans = y * 10;
-          return { prompt: '<div class="ask">' + y + ' 元 = ? 角</div>',
-                   options: numOptions(ans), ans: String(ans) };
-        }
-        if (k === 1) {
-          const y = ri(2, 9), ans = y;
-          return { prompt: '<div class="ask">' + (y * 10) + ' 角 = ? 元</div>',
-                   options: numOptions(ans), ans: String(ans) };
-        }
-        const y = ri(1, 5), j = ri(1, 9), ans = y * 10 + j;
-        return { prompt: '<div class="ask">' + y + ' 元 ' + j + ' 角 = ? 角</div>',
-                 options: numOptions(ans), ans: String(ans) };
-      }
-    },
-    {
-      id: 'rmb-pay', unit: '2 欢乐购物街', icon: '🛒', name: '付钱与找零',
-      desc: '付 10 元买 8 元，找回多少',
-      gen() {
-        const price = ri(2, 9);
-        const payOpt = [10, 20, 50].filter((p) => p > price);
-        const pay = pick(payOpt);
-        const ans = pay - price;
-        const items = pick(['🧸', '📚', '✏️', '🍬', '🎁', '⚽']);
+        const pairs = [
+          { a: '1 元', b: '10 角' }, { a: '2 元', b: '20 角' },
+          { a: '5 元', b: '50 角' }, { a: '3 元', b: '30 角' },
+          { a: '4 元', b: '40 角' }, { a: '2 元 5 角', b: '25 角' },
+          { a: '1 元 5 角', b: '15 角' }
+        ];
+        const n = ri(2, 3);
+        const use = shuffle(pairs.slice()).slice(0, n);
         return {
-          prompt: '<div class="ask">' + items + ' 一个玩具 ' + price + ' 元<br>' +
-            '付了 ' + pay + ' 元，应找回多少元？</div>',
-          options: numOptions(ans), ans: String(ans)
+          kind: 'drag', type: 'link',
+          prompt: '把同样多的钱连起来（共 ' + n + ' 对）',
+          left: use.map(function (x) { return { emoji: '💴', label: x.a }; }),
+          right: shuffle(use.map(function (x) { return { emoji: '🪙', label: x.b }; }))
         };
       }
     },
@@ -318,21 +302,16 @@
 
     /* ========== 3. 表内乘法 ========== */
     {
-      id: 'mul-intro', unit: '3 表内乘法', icon: '✖️', name: '乘法的初步认识',
-      desc: '相同加数连加',
+      id: 'mul-intro', unit: '3 表内乘法', icon: '✖️', name: '分苹果（乘法的意义）',
+      desc: '把苹果平均分到盘子里', kind: 'drag', round: 4,
       gen() {
-        const g = ri(3, 6), p = ri(2, 7);
-        const addList = [];
-        for (let i = 0; i < g; i++) addList.push(p);
-        const sumExpr = addList.join(' + ');
-        const correct = g + ' 个 ' + p;
+        const per = ri(2, 5), boxes = ri(2, 4);
+        const total = per * boxes;
+        const emoji = pick(['🍎', '🍊', '🍪', '⭐']);
         return {
-          prompt: '<div class="addline">' + sumExpr + '</div>' +
-            '<div class="ask">这是几个几相加？</div>',
-          options: strOptions(correct, [
-            (g + 1) + ' 个 ' + p, g + ' 个 ' + (p + 1), (g - 1 > 1 ? g - 1 : g + 2) + ' 个 ' + p
-          ]),
-          ans: correct
+          kind: 'drag', type: 'group',
+          prompt: '把 ' + total + ' 个 ' + emoji + ' 平均放到 ' + boxes + ' 个盘子里',
+          total: total, boxes: boxes, emoji: emoji
         };
       }
     },
@@ -411,81 +390,63 @@
 
     /* ========== 4. 我的学校我的家 ========== */
     {
-      id: 'direction', unit: '4 我的学校我的家', icon: '🧭', name: '认识方向',
-      desc: '东、南、西、北',
+      id: 'direction', unit: '4 我的学校我的家', icon: '🧭', name: '方向迷宫',
+      desc: '按方向键把小人走到家', kind: 'drag', round: 5,
       gen() {
-        const QS = [
-          { q: '太阳从哪个方向升起？', a: '东', o: ['西', '南', '北'] },
-          { q: '太阳从哪个方向落下？', a: '西', o: ['东', '南', '北'] },
-          { q: '地图上通常「上」表示哪个方向？', a: '北', o: ['南', '东', '西'] },
-          { q: '面向北，你的背面是哪个方向？', a: '南', o: ['东', '西', '北'] },
-          { q: '面向北，你的右手边是哪个方向？', a: '东', o: ['西', '南', '北'] },
-          { q: '面向北，你的左手边是哪个方向？', a: '西', o: ['东', '南', '北'] },
-          { q: '东和西是什么关系？', a: '相反的方向', o: ['相同的方向', '相邻方向', '没有关系'] }
-        ];
-        const it = pick(QS);
-        return { prompt: compassHTML() + '<div class="ask">' + it.q + '</div>',
-                 options: strOptions(it.a, it.o), ans: it.a };
-      }
-    },
-    {
-      id: 'route', unit: '4 我的学校我的家', icon: '🗺️', name: '路线图与位置',
-      desc: '谁在谁的哪一边',
-      gen() {
-        const d = pick(['东', '南', '西', '北']);
-        const opp = { 东: '西', 南: '北', 西: '东', 北: '南' }[d];
-        const k = rnd(2);
-        if (k === 0) {
-          return {
-            prompt: '<div class="ask">小明从家向东走 3 格到学校<br>学校在小明家的哪个方向？</div>',
-            options: shuffle(['东', '南', '西', '北']), ans: '东'
-          };
-        }
+        const size = 5;
+        let st, gl, guard = 0;
+        do {
+          st = { r: ri(0, size - 1), c: ri(0, size - 1) };
+          gl = { r: ri(0, size - 1), c: ri(0, size - 1) };
+          guard++;
+        } while ((Math.abs(st.r - gl.r) + Math.abs(st.c - gl.c)) < 3 && guard < 80);
         return {
-          prompt: '<div class="ask">学校在小明家的' + d + '面<br>小明家在学校的哪个方向？</div>',
-          options: shuffle(['东', '南', '西', '北']), ans: opp
+          kind: 'drag', type: 'maze',
+          prompt: '🧒 要走到 🏠<br>点方向键移动，先想清楚往哪边走',
+          size: size, start: st, goal: gl
         };
       }
     },
     {
-      id: 'left-right', unit: '4 我的学校我的家', icon: '👐', name: '左右与相对位置',
-      desc: '面对面时左右相反',
+      id: 'route', unit: '4 我的学校我的家', icon: '🗺️', name: '放在正确方位',
+      desc: '把地点拖到「我家的哪一面」', kind: 'drag', round: 5,
       gen() {
-        const QS = [
-          { q: '你和同学面对面站着，你举起右手，他看到的在你的哪一边？', a: '他的左边', o: ['他的右边', '他的前面', '同一个方向'] },
-          { q: '你和同伴<b>并排朝同一个方向</b>站，你的左边就是同伴的哪一边？', a: '左边', o: ['右边', '前面', '后面'] },
-          { q: '排队时你从左数第 3 个，从右数第 4 个，这排共有几人？', a: '6 人', o: ['7 人', '5 人', '8 人'] },
-          { q: '和同伴面对面，你的左边对应同伴的？', a: '右边', o: ['左边', '前面', '后面'] }
+        const pool = [
+          { emoji: '🏫', label: '学校' }, { emoji: '🏥', label: '医院' },
+          { emoji: '🏪', label: '超市' }, { emoji: '🌳', label: '公园' },
+          { emoji: '📮', label: '邮局' }, { emoji: '🏦', label: '银行' }
         ];
-        const it = pick(QS);
-        return { prompt: '<div class="ask">' + it.q + '</div>',
-                 options: strOptions(it.a, it.o), ans: it.a };
+        const used = shuffle(pool.slice()).slice(0, ri(2, 4));
+        const dirs = shuffle(['北', '东', '南', '西']);
+        used.forEach(function (it, i) { it.dir = dirs[i % 4]; });
+        return {
+          kind: 'drag', type: 'place',
+          prompt: '中间是 🏠 我家<br>' + used.map(function (x) {
+            return x.emoji + x.label + ' 在我家的' + x.dir + '面';
+          }).join('　·　'),
+          items: used
+        };
+      }
+    },
+    {
+      id: 'left-right', unit: '4 我的学校我的家', icon: '👐', name: '排到正确位置',
+      desc: '从左数第几个位置', kind: 'drag', round: 5,
+      gen() {
+        const person = pick([
+          { emoji: '🧒', name: '小明' }, { emoji: '👧', name: '小红' },
+          { emoji: '👦', name: '小刚' }, { emoji: '👶', name: '小丽' }
+        ]);
+        const slots = ri(4, 6);
+        const answer = ri(1, slots);
+        return {
+          kind: 'drag', type: 'seat',
+          prompt: '把 ' + person.emoji + ' ' + person.name + ' 拖到<b>从左数第 ' + answer + ' 个</b>位置',
+          slots: slots, answer: answer, person: person
+        };
       }
     },
 
     /* ========== 5. 分类 ========== */
-    {
-      id: 'classify', unit: '5 分类', icon: '🗂️', name: '按不同标准分类',
-      desc: '可以按颜色 / 种类分',
-      gen() {
-        const k = rnd(2);
-        if (k === 0) {
-          return {
-            prompt: '<div class="items">🍎 🍌 🍎 🍌 🍎</div>' +
-              '<div class="ask">这些水果按<b>种类</b>分，能分成哪两类？</div>' +
-              '<div class="hint">题目已经把标准定成「种类」了</div>',
-            options: shuffle(['苹果和香蕉', '红色和黄色', '大的和小的', '圆的和弯的']),
-            ans: '苹果和香蕉'
-          };
-        }
-        return {
-          prompt: '<div class="items">🔴 🔵 🔴 🔵 🔵 🔴</div>' +
-            '<div class="ask">这些圆片按颜色分，各有多少个？</div>',
-          options: shuffle(['红 3 个、蓝 3 个', '红 4 个、蓝 2 个', '红 2 个、蓝 4 个', '都是 3 个']),
-          ans: '红 3 个、蓝 3 个'
-        };
-      }
-    },
     {
       id: 'stats-table', unit: '5 分类', icon: '👆', name: '点一点，数一数',
       desc: '点水果计数，统计表自己长出来', kind: 'drag', round: 5,
