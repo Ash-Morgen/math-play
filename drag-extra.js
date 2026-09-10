@@ -379,6 +379,66 @@
     root.appendChild(scene);
   }
 
+  /* ================= 进位 / 退位判断（拖筹码） ================= */
+  /* q = { prompt, a, b, op, need }  need=true 表示个位满十（或不够减） */
+  function buildCarry(q, root, done) {
+    var scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    var add = q.op === '+';
+    var o1 = q.a % 10, o2 = q.b % 10;
+
+    var calc = el('div', 'carry-calc');
+    calc.innerHTML =
+      '<div class="cc-slotrow"><span class="cc-slot" data-slot="carry"></span></div>' +
+      '<div class="cc-row"><span class="cc-num">' + q.a + '</span></div>' +
+      '<div class="cc-row"><span class="cc-op">' + q.op + '</span><span class="cc-num">' + q.b + '</span></div>' +
+      '<div class="cc-line"></div>' +
+      '<div class="cc-hint">' + (add
+        ? '个位 ' + o1 + ' + ' + o2 + ' = ' + (o1 + o2)
+        : '个位 ' + o1 + ' 不够减 ' + o2) + '</div>';
+    scene.appendChild(calc);
+
+    var slot = calc.querySelector('.cc-slot');
+    var pool = el('div', 'drag-pool');
+    var wrong = 0, solved = false;
+
+    var CHOICES = add
+      ? [{ v: '1', label: '要进 1' }, { v: '0', label: '不进位' }]
+      : [{ v: '1', label: '要退 1' }, { v: '0', label: '不退位' }];
+
+    CHOICES.forEach(function (c) {
+      var chip = el('div', 'drag-item carry-chip', c.label);
+      chip.setAttribute('data-val', c.v);
+      dragify(chip, {
+        near: '.cc-slot',
+        onDrop: function (node, target) {
+          var s2 = target && target.closest ? target.closest('.cc-slot') : null;
+          if (!s2 || solved) { shake(node); return; }
+          if ((c.v === '1') === q.need) {
+            solved = true;
+            node.setAttribute('data-locked', '1');
+            node.classList.add('placed');
+            s2.textContent = q.need ? '1' : '—';
+            s2.classList.add('filled');
+            if (!q.need) s2.classList.add('no');
+            Sfx().ok();
+            setTimeout(function () { done(wrong === 0); }, 720);
+          } else {
+            shake(node); Sfx().bad(); wrong++;
+          }
+        }
+      });
+      pool.appendChild(chip);
+    });
+
+    scene.appendChild(pool);
+    scene.appendChild(el('div', 'drag-hint', add
+      ? '个位相加满十就要进 1，不满十就不用进'
+      : '个位不够减就要从十位退 1 当十'));
+    root.appendChild(scene);
+  }
+
   /* ---------- 接入 ---------- */
   var orig = D.mount;
   D.mount = function (root, q, done) {
@@ -387,6 +447,7 @@
     if (q.type === 'seat') return buildSeat(q, root, done);
     if (q.type === 'group') return buildGroup(q, root, done);
     if (q.type === 'eqfill') return buildEqfill(q, root, done);
+    if (q.type === 'carry') return buildCarry(q, root, done);
     if (q.type === 'fill') return buildFill(q, root, done);
     return orig(root, q, done);
   };
