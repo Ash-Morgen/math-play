@@ -17,39 +17,75 @@
   }
 
   /* ---------- 通用拖拽 ---------- */
+  /* 同时支持 Pointer Events 与 Touch Events：
+     部分手机内置浏览器（WebView）不支持 pointer* 事件，
+     只写 pointer* 会导致「怎么拖都没反应」。 */
+  const HAS_PE = typeof window.PointerEvent === 'function';
+
+  /* 从任意事件里取坐标（touchend 时 touches 为空，得用 changedTouches） */
+  function posOf(e) {
+    if (e.touches && e.touches.length) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    if (e.changedTouches && e.changedTouches.length) {
+      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    if (typeof e.clientX === 'number') return { x: e.clientX, y: e.clientY };
+    return null;
+  }
+
   function dragify(node, opts) {
-    node.addEventListener('pointerdown', function (e) {
+    node.style.touchAction = 'none';            // 别让浏览器把手势当滚动抢走
+    const downEv = HAS_PE ? 'pointerdown' : 'touchstart';
+    const moveEv = HAS_PE ? 'pointermove' : 'touchmove';
+    const upEv = HAS_PE ? 'pointerup' : 'touchend';
+    const cancelEv = HAS_PE ? 'pointercancel' : 'touchcancel';
+
+    node.addEventListener(downEv, function (e) {
       if (node.dataset.locked === '1') return;
-      e.preventDefault();
-      const sx = e.clientX, sy = e.clientY;
+      const p0 = posOf(e);
+      if (!p0) return;
+      // 注意：这里【不能】preventDefault，否则浏览器不会再合成 click 事件，
+      // 手机上的「点选连线」就全失效了。防滚动交给 touch-action:none + touchmove。
+      const sx = p0.x, sy = p0.y;
+      let lx = sx, ly = sy;                     // 最后已知位置（取消时兜底）
       node.classList.add('dragging');
-      // 关键：让被拖元素对命中检测透明，这样 elementFromPoint 能拿到下面的容器
       node.style.pointerEvents = 'none';
 
       function onMove(ev) {
-        node.style.transform = 'translate(' + (ev.clientX - sx) + 'px,' + (ev.clientY - sy) +
+        const p = posOf(ev);
+        if (!p) return;
+        lx = p.x; ly = p.y;
+        ev.preventDefault();
+        node.style.transform = 'translate(' + (p.x - sx) + 'px,' + (p.y - sy) +
           'px) scale(1.14) rotate(-3deg)';
       }
+
       function onUp(ev) {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-        document.removeEventListener('pointercancel', onUp);
+        document.removeEventListener(moveEv, onMove);
+        document.removeEventListener(upEv, onUp);
+        document.removeEventListener(cancelEv, onUp);
         node.classList.remove('dragging');
         node.style.transform = '';
         node.style.pointerEvents = '';
+        // cancel 类事件的坐标常是 (0,0)，用最后已知位置兜底，否则会吸到左上角
+        const cancelled = (ev.type === 'pointercancel' || ev.type === 'touchcancel');
+        let p = posOf(ev);
+        if (!p || cancelled || (p.x === 0 && p.y === 0)) p = { x: lx, y: ly };
+
         let target = null;
-        try { target = document.elementFromPoint(ev.clientX, ev.clientY); } catch (_) { }
-        // 传了 near 选择器就做「就近吸附」：落点没命中就找 30px 内最近的容器
+        try { target = document.elementFromPoint(p.x, p.y); } catch (_) { }
         if (opts.near) {
           const precise = (target && target.closest) ? target.closest(opts.near) : null;
-          target = precise || hitNear(ev.clientX, ev.clientY, opts.near);
+          target = precise || hitNear(p.x, p.y, opts.near);
         }
         if (opts.onDrop) opts.onDrop(node, target);
       }
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
-      document.addEventListener('pointercancel', onUp);
-    });
+
+      document.addEventListener(moveEv, onMove, { passive: false });
+      document.addEventListener(upEv, onUp);
+      document.addEventListener(cancelEv, onUp);
+    }, { passive: false });
   }
 
   /**
@@ -317,17 +353,17 @@
     const board = el('div', 'link-board');
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'link-svg');
-    board.appendChild(svg);
-    const colL = el('div', 'link-col'), colR = el('div', 'link-col');
+    const colL = el('div', 'link-col');
+    const colR = el('div', 'link-col');
 
     const total = q.left.length * q.right.length;
     let count = 0;
     const made = {};
     const countEl = el('div', 'link-count', '已连 0 / ' + total);
 
-    function drawLine(a, b) {
+    function drawLine(from, to) {
       const br = board.getBoundingClientRect();
-      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const ra = from.getBoundingClientRect(), rb = to.getBoundingClientRect();
       const x1 = ra.right - br.left, y1 = ra.top + ra.height / 2 - br.top;
       const x2 = rb.left - br.left, y2 = rb.top + rb.height / 2 - br.top;
       const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -335,50 +371,82 @@
       ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
       ln.setAttribute('class', 'link-line');
       svg.appendChild(ln);
-      // 两端补圆点，让「确实连上了」一眼可见
       [[x1, y1], [x2, y2]].forEach(function (pt) {
         const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         c.setAttribute('cx', pt[0]); c.setAttribute('cy', pt[1]); c.setAttribute('r', 6);
         c.setAttribute('class', 'link-node');
         svg.appendChild(c);
       });
-      if (countEl) countEl.textContent = '已连 ' + count + ' / ' + total;
+      countEl.textContent = '已连 ' + count + ' / ' + total;
     }
 
-    function makeCard(it, side, idx) {
-      const card = el('div', 'link-card', '<span class="lc-emoji">' + it.emoji +
-        '</span><span class="lc-label">' + it.label + '</span>');
+    /* 真正建立一条连线（拖拽和点选共用） */
+    function connect(from, to) {
+      if (!from || !to || from === to) return false;
+      if (from.dataset.side !== 'L' || to.dataset.side !== 'R') return false;
+      const key = from.dataset.idx + '-' + to.dataset.idx;
+      if (made[key]) { shake(from); return false; }
+      made[key] = true;
+      count++;
+      drawLine(from, to);
+      to.classList.add('linked');
+      Sfx().ok();
+      if (count === total) setTimeout(function () { done(true); }, 500);
+      return true;
+    }
+
+    /* 点选式连线：先点左边一件，再点右边一件（手机上比拖拽稳得多） */
+    let picked = null;
+    let justDragged = false;
+
+    function onCardTap(card) {
+      if (justDragged) return;                       // 刚拖完就别再当点选处理
+      if (card.dataset.side === 'L') {
+        if (picked === card) { card.classList.remove('picked'); picked = null; return; }
+        if (picked) picked.classList.remove('picked');
+        picked = card;
+        card.classList.add('picked');
+        Sfx().tick();
+      } else if (picked) {
+        const p = picked;
+        if (connect(p, card)) {
+          p.classList.remove('picked');
+          picked = null;
+        }
+      }
+    }
+
+    function makeCard(it, i, side) {
+      const card = el('div', 'link-card',
+        '<span class="lc-emoji">' + it.emoji + '</span><span class="lc-label">' + it.label + '</span>');
       card.dataset.side = side;
-      card.dataset.idx = String(idx);
-      card.dataset.key = side + idx;
+      card.dataset.idx = String(i);
       dragify(card, {
         near: '.link-card',
         onDrop: function (node, target) {
           const other = target && target.closest ? target.closest('.link-card') : null;
-          if (!other || other.dataset.side === side) { shake(node); return; }
-          const key = node.dataset.key + '-' + other.dataset.key;
-          if (made[key]) { shake(node); Sfx().bad(); return; }   // 重复连线不计
-          made[key] = 1;
-          count++;
-          drawLine(node, other);
-          const dot = el('span', 'link-dot', '●');
-          other.appendChild(dot);
-          other.classList.add('linked');
-          node.classList.add('linked');
-          Sfx().tick();
-          if (count === total) setTimeout(function () { done(true); }, 600);
+          if (!other || other === node) { shake(node); return; }
+          const [from, to] = node.dataset.side === 'L' ? [node, other] : [other, node];
+          if (connect(from, to)) {
+            justDragged = true;
+            setTimeout(function () { justDragged = false; }, 400);
+          }
         }
       });
+      card.addEventListener('click', function () { onCardTap(card); });
       return card;
     }
 
-    q.left.forEach(function (it, i) { colL.appendChild(makeCard(it, 'L', i)); });
-    q.right.forEach(function (it, i) { colR.appendChild(makeCard(it, 'R', i)); });
+    q.left.forEach(function (it, i) { colL.appendChild(makeCard(it, i, 'L')); });
+    q.right.forEach(function (it, i) { colR.appendChild(makeCard(it, i, 'R')); });
+
+    board.appendChild(svg);
     board.appendChild(colL);
     board.appendChild(colR);
     scene.appendChild(board);
     scene.appendChild(countEl);
-    scene.appendChild(el('div', 'drag-hint', '左边每一件都要和右边连一次，共 ' + total + ' 种搭配'));
+    scene.appendChild(el('div', 'drag-hint',
+      '🔗 拖过去连，也可以「先点左边、再点右边」<br>左边每一件都要和右边连一次，共 ' + total + ' 种搭配'));
     root.appendChild(scene);
   }
 
