@@ -397,6 +397,7 @@
       else if (q.type === 'order') buildOrder(q, root, done);
       else root.appendChild(el('div', 'drag-prompt', '（未知拖拽题型）'));
     },
-    _shuffle: shuffleArr
+    _shuffle: shuffleArr,
+    _utils: { el: el, dragify: dragify, shake: shake, Sfx: Sfx }
   };
 })();
