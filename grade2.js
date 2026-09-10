@@ -209,59 +209,6 @@
       }
     },
     {
-      id: 'v-mixed', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '算一算（拖答案）',
-      desc: '连加连减，拖答案进方框', kind: 'drag', round: 6,
-      gen() {
-        const k = rnd(3);
-        let expr, ans;
-        if (k === 0) {
-          const a = ri(11, 35), b = ri(11, 30), c = ri(11, Math.max(12, 95 - a - b));
-          expr = a + ' + ' + b + ' + ' + c; ans = a + b + c;   // 和 <= 95，控制在 100 以内
-        } else if (k === 1) {
-          const a = ri(70, 99), b = ri(11, 25), c = ri(11, a - b - 11);
-          expr = a + ' \u2212 ' + b + ' \u2212 ' + c; ans = a - b - c;
-        } else {
-          // 关键：c 必须小于 a+b，否则 a+b-c 会算成负数（二年级不学负数）
-          const a = ri(30, 60), b = ri(11, 30);
-          const c = ri(6, Math.max(7, Math.min(a + b - 5, 60)));
-          expr = a + ' + ' + b + ' \u2212 ' + c; ans = a + b - c;
-        }
-        const set = new Set([ans]);
-        let g = 0;
-        while (set.size < 4 && g++ < 80) {
-          const v = ans + (rnd(2) ? 1 : -1) * ri(1, 9);
-          if (v > 0 && v !== ans) set.add(v);
-        }
-        return {
-          kind: 'drag', type: 'eqfill',
-          prompt: '从左往右依次算，拖答案到方框里',
-          expr: expr, ans: ans,
-          digits: shuffle(Array.from(set))
-        };
-      }
-    },
-    {
-      id: 'v-check', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '验算（拖答案）',
-      desc: '用减法检验加法', kind: 'drag', round: 6,
-      gen() {
-        const a = ri(21, 79), b = ri(11, Math.min(60, 99 - a));
-        const sum = a + b;
-        const set = new Set([a]);
-        let g = 0;
-        while (set.size < 4 && g++ < 60) {
-          const v = a + (rnd(2) ? 1 : -1) * ri(1, 9);
-          if (v > 0 && v !== a) set.add(v);
-        }
-        return {
-          kind: 'drag', type: 'eqfill',
-          prompt: '用减法验算：' + a + ' + ' + b + ' = ' + sum +
-            '<br>那 ' + sum + ' \u2212 ' + b + ' 应该得几？',
-          expr: sum + ' \u2212 ' + b, ans: a,
-          digits: shuffle(Array.from(set))
-        };
-      }
-    },
-    {
       id: 'v-estimate', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '估算（拖答案）',
       desc: '先估成整十数，再拖结果', kind: 'drag', round: 6,
       gen() {
@@ -442,19 +389,16 @@
       }
     },
     {
-      id: 'mul-match-26', unit: '3 表内乘法', icon: '💥', name: '乘法消除 · 2~6 口诀',
-      desc: '点选 3 块凑算式，消除得分', kind: 'match',
-      match: { rows: 8, cols: 6, factorRange: [2, 6], maxVal: 36, timeSec: 120, targetScore: 160 }
-    },
-    {
-      id: 'mul-match-79', unit: '3 表内乘法', icon: '💥', name: '乘法消除 · 7~9 口诀',
-      desc: '点选 3 块凑算式，消除得分', kind: 'match',
-      match: { rows: 8, cols: 6, factorRange: [7, 9], maxVal: 81, timeSec: 120, targetScore: 260 }
-    },
-    {
-      id: 'mul-match-all', unit: '3 表内乘法', icon: '🔥', name: '乘法消除 · 全口诀挑战',
-      desc: '2~9 混合，冲高分', kind: 'match',
-      match: { rows: 8, cols: 6, factorRange: [2, 9], maxVal: 81, timeSec: 150, targetScore: 320 }
+      id: 'mul-match', unit: '3 表内乘法', icon: '\uD83D\uDCA5', name: '乘法消除',
+      desc: '点选 3 块凑算式，三关递进', kind: 'match',
+      match: {
+        rows: 8, cols: 6,
+        levels: [
+          { name: '2~6 口诀', factorRange: [2, 6], maxVal: 36, timeSec: 90, targetScore: 120 },
+          { name: '7~9 口诀', factorRange: [7, 9], maxVal: 81, timeSec: 90, targetScore: 150 },
+          { name: '全口诀挑战', factorRange: [2, 9], maxVal: 81, timeSec: 120, targetScore: 220 }
+        ]
+      }
     },
     {
       id: 'balance-mul', unit: '3 表内乘法', icon: '\u2696', name: '乘法天平',
@@ -481,19 +425,6 @@
           leftText: a + ' × ' + b,
           ans: ans,
           options: shuffle(Array.from(set))
-        };
-      }
-    },
-    {
-      id: 'mul-apply', unit: '3 表内乘法', icon: '📝', name: '每盘放几个（拖苹果）',
-      desc: '按每盘的数量摆放，再看乘法', kind: 'drag', round: 4,
-      gen() {
-        const per = ri(2, 6), boxes = ri(2, 4);
-        const emoji = pick(['🍎', '🍊', '🍪', '\u2B50']);
-        return {
-          kind: 'drag', type: 'fill',
-          prompt: '每盘放 ' + per + ' 个，一共 ' + boxes + ' 盘<br>摆好之后再想想：怎么用乘法算出一共几个？',
-          per: per, boxes: boxes, emoji: emoji
         };
       }
     },
@@ -794,7 +725,7 @@
       $('#resultTitle').textContent = s >= 3 ? '满分！太厉害了' : s === 2 ? '真棒！' : s === 1 ? '过关！' : '再来一次吧';
       $('#resultStars').textContent = '★'.repeat(s) + '☆'.repeat(3 - s);
       $('#resultSub').textContent = '「' + m.name + '」得分 ' + res.score +
-        '（目标 ' + m.match.targetScore + '）　·　消掉 ' + res.matched + ' 组';
+        '　·　通过 ' + res.passed + '/3 关　·　消掉 ' + res.matched + ' 组';
       show('#view-result');
     });
   }
