@@ -6,12 +6,12 @@
    用法：node test_match.js */
 const fs = require('fs');
 const src = fs.readFileSync(__dirname + '/match.js', 'utf8');
-const a = src.indexOf('const EMPTY');
+const a = src.indexOf('var EMPTY');
 const b = src.indexOf('/* ================= UI');
 if (a < 0 || b < 0) { console.error('抽取失败'); process.exit(1); }
 const L = new Function(src.slice(a, b) +
-  '\nreturn {buildValueSet,evaluateTriple,modClear,makeGrid,findTriple,refill,starOf,EMPTY,MAX_RANDOM_CLEAR};')();
-const { buildValueSet, evaluateTriple, modClear, makeGrid, findTriple, refill, starOf, EMPTY } = L;
+  '\nreturn {buildValueSet,evaluateTriple,modClear,makeGrid,findTriple,refill,EMPTY,MAX_RANDOM_CLEAR};')();
+const { buildValueSet, evaluateTriple, modClear, makeGrid, findTriple, refill, EMPTY } = L;
 
 let bad = 0;
 const LEVELS = [
@@ -108,12 +108,13 @@ for (const lv of LEVELS) {
   else console.log(`  ✅ ${lv.label}: 60 局共 ${totalSteps} 步，无死局（平均 ${(score / matched).toFixed(1)} 分/次）`);
 }
 
-/* ---- 6) 星级 ---- */
-console.log('\n=== 6) 星级判定 ===');
-for (const [s, tgt, expect] of [[120, 120, 1], [162, 120, 2], [204, 120, 3], [100, 120, 0]]) {
-  const got = starOf(s, tgt);
-  if (got !== expect) { console.log(`  ❌ ${s}/${tgt} → ${got}，期望 ${expect}`); bad++; }
-  else console.log(`  ✅ ${s} 分 / 目标 ${tgt} → ${got} 星`);
+/* ---- 6) 星级（新版按「通过关数」评星，不再按分数倍率） ---- */
+console.log('\n=== 6) 星级判定（按通过关数） ===');
+const starFor = (passed) => (passed >= 3 ? 3 : passed === 2 ? 2 : passed === 1 ? 1 : 0);
+for (const [passed, expect] of [[3, 3], [2, 2], [1, 1], [0, 0]]) {
+  const got = starFor(passed);
+  if (got !== expect) { console.log(`  ❌ 过 ${passed} 关 → ${got}，期望 ${expect}`); bad++; }
+  else console.log(`  ✅ 通过 ${passed} 关 → ${got} 星`);
 }
 
 console.log('\n' + (bad ? `❌ 共 ${bad} 处问题` : '✅ 全部通过'));
