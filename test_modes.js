@@ -163,6 +163,19 @@ for (const m of MODES) {
         if (!q.emoji) err(m, 'emoji 缺失');
         if (q.per * q.boxes > 24) err(m, '总数太多: ' + q.per * q.boxes);
 
+      } else if (q.type === 'carry') {
+        const o1 = q.a % 10, o2 = q.b % 10;
+        const expectNeed = q.op === '+'
+          ? (o1 + o2 >= 10)          // 个位满十 → 要进位
+          : (o1 < o2);               // 个位不够减 → 要退位
+        if (expectNeed !== q.need) {
+          err(m, `进位判断错误: ${q.a}${q.op}${q.b}（个位 ${o1}${q.op}${o2}）应为 ` +
+                 `${expectNeed ? '要' : '不要'}进位，却标成 ${q.need ? '要' : '不要'}`);
+        }
+        if (!(q.a >= 11 && q.a <= 99)) err(m, 'a 越界: ' + q.a);
+        if (!(q.b >= 11 && q.b <= 99)) err(m, 'b 越界: ' + q.b);
+        if (q.op === '\u2212' && q.a <= q.b) err(m, '减法出现非正结果: ' + q.a + '-' + q.b);
+
       } else {
         err(m, '未知拖拽类型: ' + q.type);
       }
