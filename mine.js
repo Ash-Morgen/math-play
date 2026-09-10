@@ -34,6 +34,7 @@
     var stage = 0, target = TARGETS[0];
     var score = 0, combo = 0, best = 0, timeLeft = LEVEL_TIME;
     var grid = [], sel = [], locked = false, timer = null, over = false;
+    var popped = {};   // 刚补上的格子，渲染时做弹出动画
     var hits = 0, misses = 0;
 
     var wrap = document.createElement('div');
@@ -115,7 +116,7 @@
       $board.innerHTML = '';
       grid.forEach(function (v, i) {
         var b = document.createElement('button');
-        b.className = 'rock' + (sel.indexOf(i) >= 0 ? ' sel' : '');
+        b.className = 'rock' + (sel.indexOf(i) >= 0 ? ' sel' : '') + (popped[i] ? ' pop' : '');
         b.textContent = v === 0 ? '' : v;
         if (v === 0) b.classList.add('empty');
         b.addEventListener('click', function () { tap(i); });
@@ -124,6 +125,7 @@
       $goal.textContent = target;
       $score.textContent = score;
       $combo.textContent = combo;
+      popped = {};
     }
 
     function tap(i) {
@@ -148,14 +150,30 @@
         score += gain;
         $score.textContent = score;
         $combo.textContent = combo;
-        sel.forEach(function (i) { grid[i] = 0; cells[i].classList.add('gem'); });
+
+        // 计分板弹跳（数字变化要有"打中"的手感）
+        bump($score.parentElement);
+        if (combo >= 2) bump($combo.parentElement);
+
+        // 石头碎裂 + 宝石飞进计分区
+        sel.forEach(function (i) {
+          var c = cells[i];
+          grid[i] = 0;
+          c.classList.add('crack');
+          flyGem(c, $score.parentElement);
+          if (!c.__gemmed) { c.__gemmed = true; }
+        });
+
         beep(combo >= 2 ? 'combo' : 'ok');
-        if (combo >= 2) showFloat('\u8FDE\u51FB \u00D7' + combo + '  +' + gain);
+        // 每一次消除都要有飘字（原来只在连击时才飘）
+        showFloat(combo >= 2 ? '\u8FDE\u51FB \u00D7' + combo + '  +' + gain : '+' + gain);
+        if (combo >= 2) glow(combo);
+
         $tip.textContent = a + ' + ' + b + ' = ' + target + '\u3000\uD83D\uDC8E \u70B8\u5F00\u5566\uFF01+' + gain;
         setTimeout(function () {
           sel = []; locked = false;
           refill(); ensureSolvable(); render();
-        }, 420);
+        }, 460);
       } else {
         misses++;
         combo = 0;
@@ -168,7 +186,48 @@
     }
 
     function refill() {
-      for (var i = 0; i < grid.length; i++) if (grid[i] === 0) grid[i] = makeNum();
+      for (var i = 0; i < grid.length; i++) {
+        if (grid[i] === 0) { grid[i] = makeNum(); popped[i] = 1; }   // 标记新块，渲染时弹出
+      }
+    }
+
+    /* 计分板弹跳 */
+    function bump(elm) {
+      if (!elm) return;
+      elm.classList.remove('bump');
+      void elm.offsetWidth;               // 强制重排，让动画能重放
+      elm.classList.add('bump');
+      setTimeout(function () { elm.classList.remove('bump'); }, 460);
+    }
+
+    /* 宝石从石头飞进计分区 */
+    function flyGem(fromEl, toEl) {
+      if (!fromEl || !toEl) return;
+      var r1 = fromEl.getBoundingClientRect();
+      var r2 = toEl.getBoundingClientRect();
+      var g = document.createElement('div');
+      g.className = 'mine-gemfly';
+      g.textContent = '\uD83D\uDC8E';
+      g.style.left = (r1.left + r1.width / 2) + 'px';
+      g.style.top = (r1.top + r1.height / 2) + 'px';
+      document.body.appendChild(g);
+      requestAnimationFrame(function () {
+        g.style.transform = 'translate(-50%,-50%) translate(' +
+          (r2.left + r2.width / 2 - r1.left - r1.width / 2) + 'px,' +
+          (r2.top + r2.height / 2 - r1.top - r1.height / 2) + 'px) scale(.55)';
+        g.style.opacity = '0';
+      });
+      setTimeout(function () { if (g.parentNode) g.parentNode.removeChild(g); }, 800);
+    }
+
+    /* 连击越高，棋盘光晕越强 */
+    function glow(n) {
+      var cls = n >= 4 ? 'glow-3' : n >= 2 ? 'glow-2' : '';
+      if (!cls) return;
+      $board.classList.remove('glow-2', 'glow-3');
+      void $board.offsetWidth;
+      $board.classList.add(cls);
+      setTimeout(function () { $board.classList.remove(cls); }, 850);
     }
 
     function showFloat(txt) {
