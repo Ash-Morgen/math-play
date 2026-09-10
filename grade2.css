@@ -370,3 +370,72 @@
 .order-card .oc-name{font-size:12px;font-weight:800;color:var(--g2-dark)}
 .order-card.dragging{z-index:999;border-color:var(--g2);box-shadow:0 10px 24px rgba(12,166,120,.32)}
 
+/* ================= 方向迷宫 ================= */
+.maze-board{
+  display:grid;gap:4px;width:100%;max-width:320px;
+  background:#f2fbf7;border:2px solid #a8e0c8;border-radius:16px;padding:8px;
+}
+.maze-cell{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  background:#fff;border:1px solid #e3f4ee;border-radius:8px;
+  font-size:clamp(16px,4.4vw,22px);
+}
+.maze-cell.goal{background:#fff9e6;border-color:#ffd8a8}
+.maze-cell.me{background:#e9fbf3;border-color:var(--g2);animation:pop .25s ease}
+.maze-steps{font-size:13px;font-weight:800;color:#627d98}
+.maze-pad{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:100%;max-width:250px;
+}
+.mp-btn{
+  padding:11px 4px;border-radius:13px;border:2px solid #a8e0c8;
+  background:#f2fbf7;color:var(--g2-dark);font-size:13px;font-weight:800;
+  cursor:pointer;font-family:inherit;transition:transform .1s,background .15s;
+}
+.mp-btn:active{transform:scale(.94);background:#e6f9f1}
+.mp-mid{display:flex;align-items:center;justify-content:center;font-size:22px}
+
+/* ================= 放在正确方位 ================= */
+.place-board{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:290px;
+}
+.place-cell{
+  aspect-ratio:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px;
+  background:#f2fbf7;border:2px dashed #b7e8d5;border-radius:14px;font-size:24px;
+}
+.place-cell.off{background:transparent;border-color:transparent}
+.place-cell.home{background:#fff9e6;border:2px solid #ffd8a8;font-size:26px}
+.drag-item.place-item{flex-direction:column;width:auto;height:auto;padding:7px 9px;gap:2px}
+.pi-emoji{font-size:21px;line-height:1}
+.pi-label{font-size:10px;font-weight:800;color:var(--g2-dark)}
+.place-cell .drag-item{
+  width:auto;height:auto;padding:3px 5px;font-size:18px;border-radius:10px;
+  flex-direction:column;gap:1px;
+}
+
+/* ================= 排到正确位置 ================= */
+.seat-row{display:flex;gap:8px;justify-content:center;width:100%;max-width:400px}
+.seat-slot{
+  flex:1;max-width:78px;min-height:88px;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  background:#f7fffb;border:2px dashed #b7e8d5;border-radius:14px;
+}
+.seat-slot.filled{border-style:solid;border-color:var(--g2);background:#e9fbf3}
+.seat-no{position:absolute;top:3px;left:6px;font-size:10px;font-weight:800;color:#adb5bd}
+.drag-item.seat-person{flex-direction:column;width:auto;height:auto;padding:9px 11px;gap:2px}
+
+/* ================= 拖苹果分组 ================= */
+.group-row{display:flex;gap:8px;justify-content:center;width:100%;max-width:400px}
+.group-box{
+  flex:1;min-height:88px;display:flex;flex-direction:column;gap:4px;
+  background:#fff9e6;border:2px solid #ffd8a8;border-radius:16px;padding:6px;
+}
+.gb-label{font-size:11px;font-weight:800;color:#b8730a;text-align:center}
+.gb-items{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;flex:1}
+.gb-items .drag-item{width:auto;height:auto;padding:2px 3px;font-size:16px;border-radius:8px}
+.drag-item.apple{font-size:clamp(20px,5.4vw,27px);background:#fff9e6;border-color:#ffd8a8}
+.group-check{
+  font-size:13px;font-weight:800;color:#627d98;text-align:center;
+  padding:8px 14px;border-radius:12px;background:#f7fffb;
+}
+.group-check.good{background:#e9fbf3;color:var(--g2-dark);animation:pop .35s ease}
+
