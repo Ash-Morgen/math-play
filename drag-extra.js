@@ -390,8 +390,9 @@
 
     var calc = el('div', 'carry-calc');
     calc.innerHTML =
-      '<div class="cc-slotrow"><span class="cc-slot" data-slot="carry"></span></div>' +
-      '<div class="cc-row"><span class="cc-num">' + q.a + '</span></div>' +
+      '<div class="cc-row cc-toprow"><span class="cc-op"></span>' +
+        '<span class="cc-slotbox"><span class="cc-slot" data-slot="carry"></span></span></div>' +
+      '<div class="cc-row"><span class="cc-op"></span><span class="cc-num">' + q.a + '</span></div>' +
       '<div class="cc-row"><span class="cc-op">' + q.op + '</span><span class="cc-num">' + q.b + '</span></div>' +
       '<div class="cc-line"></div>' +
       '<div class="cc-hint">' + (add
