@@ -10,6 +10,7 @@ const ASSETS = [
   './grade2.html',
   './grade2.css',
   './drag.js',
+  './drag-extra.js',
   './match.js',
   './grade2.js',
   './manifest.json',
