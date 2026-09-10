@@ -730,36 +730,75 @@
   }
 
   /* ================= 首页 ================= */
+  let currentUnit = null;
+
+  // 首页：只列 6 个大类（不再把所有游戏平铺，下滑太累）
   function renderHome() {
-    if (window.__mgActive) window.__mgActive();   // 离开消除局时清计时器
+    if (window.__mgActive) window.__mgActive();
+    currentUnit = null;
     const box = $('#unitList');
     box.innerHTML = '';
     const units = [];
     MODES.forEach((m) => { if (units.indexOf(m.unit) < 0) units.push(m.unit); });
+
     units.forEach((u) => {
       const list = MODES.filter((m) => m.unit === u);
-      const block = document.createElement('div');
-      block.className = 'unit-block card';
-      const sp = u.indexOf(' ');
-      block.innerHTML = '<div class="unit-title"><span class="u-badge">' + u.slice(0, sp) +
-        '</span><span>' + u.slice(sp + 1) + '</span></div>';
+      let played = 0, answered = 0, correct = 0;
       list.forEach((m) => {
-        const b = document.createElement('button');
-        b.className = 'mode-btn';
         const st = DB.modes[m.id];
-        const acc = st && st.answered ? ' · 正确率 ' + Math.round(st.correct / st.answered * 100) + '%' : '';
-        b.innerHTML = '<span class="m-emoji">' + m.icon + '</span>' +
-          '<span class="m-meta"><span>' + m.name + '</span>' +
-          '<span class="m-desc">' + m.desc + acc + '</span></span>';
-        b.addEventListener('click', () => startRound(m.id));
-        block.appendChild(b);
+        if (st && st.answered) { played++; answered += st.answered; correct += st.correct; }
       });
-      box.appendChild(block);
+      const acc = answered ? Math.round(correct / answered * 100) + '%' : '—';
+      const sp = u.indexOf(' ');
+      const card = document.createElement('button');
+      card.className = 'unit-card';
+      card.innerHTML =
+        '<span class="uc-badge">' + u.slice(0, sp) + '</span>' +
+        '<span class="uc-body"><span class="uc-name">' + u.slice(sp + 1) + '</span>' +
+        '<span class="uc-meta">' + list.length + ' 个游戏　·　已练 ' + played +
+        ' 个　·　正确率 ' + acc + '</span></span>' +
+        '<span class="uc-arrow">\u203a</span>';
+      card.addEventListener('click', () => renderUnit(u));
+      box.appendChild(card);
     });
+
     $('#homeStars').textContent = DB.stars;
     $('#homeDays').textContent = Object.keys(DB.days).length;
     $('#homeAcc').textContent = DB.answered ? Math.round(DB.correct / DB.answered * 100) + '%' : '—';
     show('#view-home');
+  }
+
+  // 单元内页：只显示这一大类下的游戏
+  function renderUnit(unitName) {
+    if (window.__mgActive) window.__mgActive();
+    currentUnit = unitName;
+    const sp = unitName.indexOf(' ');
+    $('#unitTitle').textContent = unitName.slice(sp + 1);
+
+    const list = MODES.filter((m) => m.unit === unitName);
+    const box = $('#modeList');
+    box.innerHTML = '';
+    list.forEach((m) => {
+      const b = document.createElement('button');
+      b.className = 'mode-btn';
+      const st = DB.modes[m.id];
+      const acc = st && st.answered ? ' · 正确率 ' + Math.round(st.correct / st.answered * 100) + '%' : '';
+      b.innerHTML = '<span class="m-emoji">' + m.icon + '</span>' +
+        '<span class="m-meta"><span>' + m.name + '</span>' +
+        '<span class="m-desc">' + m.desc + acc + '</span></span>';
+      b.addEventListener('click', () => startRound(m.id));
+      box.appendChild(b);
+    });
+
+    let answered = 0, correct = 0;
+    list.forEach((m) => { const st = DB.modes[m.id]; if (st) { answered += st.answered; correct += st.correct; } });
+    $('#unitStats').innerHTML =
+      '<div class="stat"><span class="stat-num">' + list.length + '</span><span class="stat-lbl">个游戏</span></div>' +
+      '<div class="stat"><span class="stat-num">' + answered + '</span><span class="stat-lbl">累计答题</span></div>' +
+      '<div class="stat"><span class="stat-num">' + (answered ? Math.round(correct / answered * 100) + '%' : '—') +
+      '</span><span class="stat-lbl">正确率</span></div>';
+    $('#unitStars').textContent = DB.stars;
+    show('#view-unit');
   }
 
   function renderParent() {
@@ -804,9 +843,14 @@
   });
 
   /* ================= 事件 ================= */
-  $('#btnQuit').addEventListener('click', renderHome);
+  $('#btnQuit').addEventListener('click', () => {
+    if (currentUnit) renderUnit(currentUnit); else renderHome();
+  });
+  $('#btnUnitBack').addEventListener('click', renderHome);
   $('#btnAgain').addEventListener('click', () => startRound(cur ? cur.mode.id : MODES[0].id));
-  $('#btnBackHome').addEventListener('click', renderHome);
+  $('#btnBackHome').addEventListener('click', () => {
+    if (currentUnit) renderUnit(currentUnit); else renderHome();
+  });
   $('#btnParent').addEventListener('click', renderParent);
   $('#btnParentBack').addEventListener('click', renderHome);
   $('#btnReset').addEventListener('click', () => {

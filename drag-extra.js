@@ -114,6 +114,7 @@
         '<span class="pi-emoji">' + it.emoji + '</span><span class="pi-label">' + it.label + '</span>');
       card.setAttribute('data-dir', it.dir);
       dragify(card, {
+        near: '.place-cell',
         onDrop: function (node, target) {
           var cell = target && target.closest ? target.closest('.place-cell') : null;
           if (!cell || !cell.getAttribute('data-accept')) { shake(node); return; }
@@ -159,6 +160,7 @@
     var card = el('div', 'drag-item seat-person',
       '<span class="pi-emoji">' + q.person.emoji + '</span><span class="pi-label">' + q.person.name + '</span>');
     dragify(card, {
+      near: '.seat-slot',
       onDrop: function (node, target) {
         var slot = target && target.closest ? target.closest('.seat-slot') : null;
         if (!slot || solved) { shake(node); return; }
@@ -234,6 +236,7 @@
       (function () {
         var apple = el('div', 'drag-item apple', q.emoji);
         dragify(apple, {
+          near: '.group-box',
           onDrop: function (node, target) {
             var box = target && target.closest ? target.closest('.group-box') : null;
             if (box && !solved) {
@@ -277,6 +280,7 @@
       var chip = el('div', 'drag-item chip', String(d));
       chip.setAttribute('data-val', String(d));
       dragify(chip, {
+        near: '.vslot',
         onDrop: function (node, target) {
           var slot = target && target.closest ? target.closest('.vslot') : null;
           if (!slot) { shake(node); return; }
@@ -347,6 +351,7 @@
       (function () {
         var apple = el('div', 'drag-item apple', q.emoji);
         dragify(apple, {
+          near: '.group-box',
           onDrop: function (node, target) {
             var box = target && target.closest ? target.closest('.group-box') : null;
             if (!box || solved) { shake(node); wrong++; return; }

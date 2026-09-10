@@ -39,12 +39,41 @@
         node.style.pointerEvents = '';
         let target = null;
         try { target = document.elementFromPoint(ev.clientX, ev.clientY); } catch (_) { }
+        // 传了 near 选择器就做「就近吸附」：落点没命中就找 30px 内最近的容器
+        if (opts.near) {
+          const precise = (target && target.closest) ? target.closest(opts.near) : null;
+          target = precise || hitNear(ev.clientX, ev.clientY, opts.near);
+        }
         if (opts.onDrop) opts.onDrop(node, target);
       }
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     });
+  }
+
+  /**
+   * 松手时的目标命中：先看精确落点，没命中就向四周扩 pad 像素找最近的容器。
+   * 孩子手指不精准，落在框边缘外一点也应该算成功。
+   */
+  function hitNear(x, y, sel, pad) {
+    pad = pad === undefined ? 30 : pad;
+    var el0 = null;
+    try { el0 = document.elementFromPoint(x, y); } catch (e) { }
+    if (el0 && el0.closest) {
+      var direct = el0.closest(sel);
+      if (direct) return direct;
+    }
+    var list = document.querySelectorAll(sel);
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i].getBoundingClientRect();
+      var dx = Math.max(r.left - x, 0, x - r.right);
+      var dy = Math.max(r.top - y, 0, y - r.bottom);
+      var dd = Math.sqrt(dx * dx + dy * dy);
+      if (dd <= pad && dd < bestD) { best = list[i]; bestD = dd; }
+    }
+    return best;
   }
 
   function shake(node) {
@@ -82,6 +111,7 @@
         it.emoji + (it.label ? '<b class="di-label">' + it.label + '</b>' : ''));
       item.dataset.group = it.group;
       dragify(item, {
+        near: '.drag-bin',
         onDrop: function (node, target) {
           const bin = target && target.closest ? target.closest('.drag-bin') : null;
           if (bin && bin.dataset.accept === node.dataset.group) {
@@ -150,6 +180,7 @@
       const coin = el('div', 'drag-item coin v' + v, v + '元');
       coin.dataset.v = String(v);
       dragify(coin, {
+        near: '.drag-bin',
         onDrop: function (node, target) {
           const bin = target && target.closest ? target.closest('.drag-bin') : null;
           if (bin && bin.dataset.accept === 'money' && !settled) {
@@ -209,6 +240,7 @@
       const chip = el('div', 'drag-item chip', String(d));
       chip.dataset.val = String(d);
       dragify(chip, {
+        near: '.vslot',
         onDrop: function (node, target) {
           const slot = target && target.closest ? target.closest('.vslot') : null;
           if (!slot) { shake(node); return; }
@@ -291,17 +323,26 @@
     const total = q.left.length * q.right.length;
     let count = 0;
     const made = {};
+    const countEl = el('div', 'link-count', '已连 0 / ' + total);
 
     function drawLine(a, b) {
       const br = board.getBoundingClientRect();
       const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const x1 = ra.right - br.left, y1 = ra.top + ra.height / 2 - br.top;
+      const x2 = rb.left - br.left, y2 = rb.top + rb.height / 2 - br.top;
       const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      ln.setAttribute('x1', ra.right - br.left);
-      ln.setAttribute('y1', ra.top + ra.height / 2 - br.top);
-      ln.setAttribute('x2', rb.left - br.left);
-      ln.setAttribute('y2', rb.top + rb.height / 2 - br.top);
+      ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+      ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
       ln.setAttribute('class', 'link-line');
       svg.appendChild(ln);
+      // 两端补圆点，让「确实连上了」一眼可见
+      [[x1, y1], [x2, y2]].forEach(function (pt) {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', pt[0]); c.setAttribute('cy', pt[1]); c.setAttribute('r', 6);
+        c.setAttribute('class', 'link-node');
+        svg.appendChild(c);
+      });
+      if (countEl) countEl.textContent = '已连 ' + count + ' / ' + total;
     }
 
     function makeCard(it, side, idx) {
@@ -311,6 +352,7 @@
       card.dataset.idx = String(idx);
       card.dataset.key = side + idx;
       dragify(card, {
+        near: '.link-card',
         onDrop: function (node, target) {
           const other = target && target.closest ? target.closest('.link-card') : null;
           if (!other || other.dataset.side === side) { shake(node); return; }
@@ -335,6 +377,7 @@
     board.appendChild(colL);
     board.appendChild(colR);
     scene.appendChild(board);
+    scene.appendChild(countEl);
     scene.appendChild(el('div', 'drag-hint', '左边每一件都要和右边连一次，共 ' + total + ' 种搭配'));
     root.appendChild(scene);
   }
@@ -364,6 +407,7 @@
           '<span class="oc-emoji">' + p.emoji + '</span><span class="oc-name">' + p.name + '</span>');
         card.dataset.name = p.name;
         dragify(card, {
+          near: '.order-card',
           onDrop: function (node, target) {
             if (finished) return;
             const other = target && target.closest ? target.closest('.order-card') : null;
