@@ -833,3 +833,125 @@ body{
   width:auto;padding:11px 15px;font-size:15px;font-weight:800;
   background:#f2fbf7;border-color:#a8e0c8;color:var(--g2-dark);
 }
+
+/* ================= 宝石矿工 ================= */
+.mine-wrap{
+  position:relative;                 /* 连击飘字要相对它定位 */
+  width:100%;display:flex;flex-direction:column;gap:10px;align-items:center;
+}
+.mine-bar{
+  display:flex;justify-content:space-between;width:100%;gap:8px;
+  font-size:13px;font-weight:800;color:#627d98;
+}
+.mine-bar .mp{background:#f1f3f5;padding:6px 12px;border-radius:99px;white-space:nowrap}
+.mine-bar .mp b{color:var(--g2-dark);font-size:15px}
+.mine-bar .m-timebox.low b{color:var(--red);animation:pulse .7s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.mine-goal{
+  width:100%;text-align:center;border-radius:17px;padding:11px;
+  background:linear-gradient(135deg,#f59e0b,#d97706);
+  box-shadow:0 5px 16px rgba(245,158,11,.32);color:#fff;
+}
+.mine-goal .mg-t{display:block;font-size:11.5px;font-weight:800;opacity:.92}
+.mine-goal .mg-n{display:block;font-size:28px;font-weight:900;line-height:1.15;letter-spacing:1px}
+.mine-board{display:grid;gap:7px;width:100%;max-width:400px}
+.rock{
+  aspect-ratio:1;border:none;border-radius:15px;cursor:pointer;
+  font-family:inherit;font-size:clamp(16px,4.8vw,23px);font-weight:900;color:#3f2f1f;
+  background:linear-gradient(160deg,#cbb89a,#a89275);
+  box-shadow:0 3px 0 #7d6a4f,inset 0 2px 6px rgba(255,255,255,.35);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .1s,box-shadow .1s;touch-action:manipulation;
+}
+.rock:active{transform:translateY(2px);box-shadow:0 2px 0 #7d6a4f}
+.rock.sel{
+  background:linear-gradient(160deg,#5eead4,#14b8a6);color:#04332c;
+  box-shadow:0 0 0 4px #14b8a6,0 3px 0 #0f766e;transform:translateY(2px) scale(1.04);
+}
+.rock.gem{background:linear-gradient(160deg,#5eead4,#22d3ee);box-shadow:0 0 20px #22d3ee}
+.rock.bad{background:linear-gradient(160deg,#fca5a5,#ef4444);animation:shake .38s}
+.rock.empty{background:rgba(0,0,0,.05);box-shadow:none;cursor:default}
+.mine-tip{text-align:center;font-size:12.5px;color:#627d98;min-height:19px;line-height:1.5}
+.mine-float{
+  position:absolute;left:50%;top:32%;transform:translate(-50%,0);
+  font-size:28px;font-weight:900;color:#f59e0b;
+  text-shadow:0 2px 0 #fff,0 0 18px rgba(245,158,11,.6);
+  pointer-events:none;animation:mineFloat .85s ease forwards;z-index:9;
+}
+@keyframes mineFloat{
+  0%{opacity:0;transform:translate(-50%,10px) scale(.6)}
+  30%{opacity:1;transform:translate(-50%,0) scale(1.12)}
+  100%{opacity:0;transform:translate(-50%,-42px) scale(1)}
+}
+.mine-mask{
+  position:absolute;inset:0;background:rgba(255,255,255,.9);
+  display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;
+}
+.mine-mbox{
+  background:#fff;border:2px solid #a8e0c8;border-radius:20px;
+  padding:22px 18px;width:100%;max-width:300px;text-align:center;
+  box-shadow:0 12px 34px rgba(12,166,120,.2);
+}
+.mm-emoji{font-size:40px;line-height:1}
+.mm-title{font-size:19px;font-weight:900;margin:8px 0 6px;color:var(--ink)}
+.mm-sub{font-size:13.5px;color:#627d98;line-height:1.7;margin-bottom:16px}
+.mm-sub b{color:var(--g2-dark);font-size:16px}
+.mm-btn{
+  width:100%;padding:13px;border:none;border-radius:14px;
+  background:var(--g2);color:#fff;font-size:16px;font-weight:800;
+  font-family:inherit;cursor:pointer;
+}
+.mm-btn:active{transform:scale(.97)}
+
+/* ================= 数字天平 ================= */
+.bal-rig{
+  position:relative;width:100%;max-width:330px;
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:12px;
+}
+.bal-beam{
+  position:relative;display:flex;justify-content:space-between;
+  align-items:flex-start;width:100%;
+  transition:transform .5s cubic-bezier(.34,1.4,.64,1);
+}
+.bal-beam::before{
+  content:'';position:absolute;left:2%;right:2%;top:0;height:6px;
+  background:linear-gradient(90deg,var(--g2),#7fd8bb,var(--g2));border-radius:99px;
+}
+/* 吊绳：把盘挂在横梁下方，看起来才像天平 */
+.bal-hang{display:flex;flex-direction:column;align-items:center;padding-top:6px}
+.bal-rope{display:block;width:2.5px;height:15px;background:var(--g2);border-radius:2px}
+.bal-pan{
+  background:#fff;border:2.5px solid var(--g2);border-radius:15px;
+  padding:13px 12px;min-width:88px;text-align:center;
+  font-size:clamp(17px,4.8vw,23px);font-weight:900;color:var(--ink);
+  box-shadow:0 3px 10px rgba(12,166,120,.12);
+}
+.bal-pan .bal-slot{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:1.6em;min-height:1.3em;border:2px dashed var(--g2);
+  border-radius:9px;color:var(--g2);background:#f2fbf7;
+}
+.bal-pan .bal-slot.filled{
+  border-style:solid;background:#e9fbf3;color:var(--g2-dark);animation:pop .3s ease;
+}
+/* 立柱：从横梁中心向下延伸，底部带底座（真天平就是立柱顶着横梁） */
+.bal-post{
+  position:absolute;left:50%;top:0;transform:translateX(-50%);
+  width:6px;height:104px;background:var(--g2);border-radius:99px;z-index:0;
+}
+.bal-post::after{
+  content:'';position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
+  width:78px;height:8px;background:var(--g2);border-radius:99px;
+}
+.bal-hint{
+  font-size:13px;font-weight:800;color:#627d98;text-align:center;
+  padding:9px 14px;border-radius:12px;background:#f7fffb;min-height:20px;
+}
+.bal-hint.good{background:#e9fbf3;color:var(--g2-dark)}
+.bal-hint.bad{background:#fff5f5;color:var(--red)}
+.drag-item.bal-chip{
+  width:auto;min-width:56px;padding:11px 14px;
+  font-size:20px;font-weight:900;color:var(--g2-dark);
+  background:#f2fbf7;border-color:#a8e0c8;
+}
