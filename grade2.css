@@ -522,3 +522,37 @@
   padding:10px 6px;word-break:break-all;
 }
 .ver-tag{color:#a8e0c8;font-weight:800}
+
+/* ================= 手机窄屏适配（手指操作） ================= */
+@media (max-width: 480px){
+  /* 连线：两列靠近，卡片加大，缩短拖拽距离 */
+  .link-board{gap:12px !important;max-width:100%}
+  /* 让两列各自撑满，卡片自然变大（比固定 min-width 更稳） */
+  .link-col{flex:1;min-width:0;gap:12px}
+  .link-card{width:100%;box-sizing:border-box}
+  .link-card{
+    min-width:84px;padding:13px 12px;gap:4px;
+    border-width:2.5px;border-radius:16px;
+  }
+  .link-card .lc-emoji{font-size:32px}
+  .link-card .lc-label{font-size:13px}
+  .link-svg line{stroke-width:5}
+
+  /* 拖拽源目标都加大 */
+  .drag-item{min-width:58px;min-height:58px;font-size:24px}
+  .drag-item.has-label{min-width:64px;min-height:64px;font-size:22px}
+  .di-label{font-size:10px}
+
+  /* 分类筐 / 盘子 / 位置 更高，好放 */
+  .drag-bin{min-height:112px}
+  .seat-slot{min-height:104px;max-width:86px}
+  .group-box{min-height:104px}
+  .place-cell{min-width:84px}
+  .maze-cell{font-size:22px}
+
+  /* 答案按钮加大 */
+  .answers button, .pool-btn{padding:14px 10px;font-size:19px}
+
+  /* 提示文字稍大一点 */
+  .drag-hint{font-size:13px}
+}
