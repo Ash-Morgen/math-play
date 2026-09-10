@@ -298,6 +298,41 @@
       desc: '点两块石头凑出目标数', kind: 'mine',
       mine: { targets: [20, 50, 100], timeSec: 50, cols: 4 }
     },
+    {
+      id: 'balance-add', unit: '1 100以内数的加减法（二）', icon: '\u2696', name: '加减天平',
+      desc: '拖数字让天平平衡', kind: 'drag', round: 6,
+      gen() {
+        const add = rnd(2) === 0;
+        let a, b, ans;
+        if (add) {
+          a = ri(12, 58); b = ri(11, 99 - a); ans = a + b;
+        } else {
+          a = ri(32, 99); b = ri(11, a - 11); ans = a - b;
+        }
+        // 干扰项用「典型错算」：漏进位的±1、看错数位的±10、相邻的±9
+        const set = new Set([ans]);
+        let g = 0;
+        while (set.size < 4 && g++ < 100) {
+          const mode = rnd(4);
+          let v;
+          if (mode === 0) v = ans + 10;
+          else if (mode === 1) v = ans - 10;
+          else if (mode === 2) v = ans + 1;
+          else v = ans + (rnd(2) ? 9 : -9);
+          if (v > 0 && v !== ans) set.add(v);
+        }
+        let k = 1;
+        while (set.size < 4 && k < 25) { if (ans + k > 0) set.add(ans + k); k++; }
+        const op = add ? '+' : '\u2212';
+        return {
+          kind: 'drag', type: 'balance',
+          prompt: '左盘是 ' + a + ' ' + op + ' ' + b + '，拖一个数到右盘让它平衡',
+          leftText: a + ' ' + op + ' ' + b,
+          ans: ans,
+          options: shuffle(Array.from(set))
+        };
+      }
+    },
 
     /* ========== 2. 欢乐购物街 ========== */
     {
