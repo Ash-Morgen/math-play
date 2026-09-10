@@ -272,3 +272,101 @@
 }
 .mg-actions button:active{transform:scale(.97)}
 
+/* ================= 竖式填数 ================= */
+.vfill-calc{
+  display:inline-block;
+  font-family:ui-monospace,Consolas,"Courier New",monospace;
+  font-size:clamp(24px,6vw,34px);font-weight:800;line-height:1.5;
+  text-align:right;padding:0 10px;margin-bottom:4px;
+}
+.vfill-calc .vrow{display:flex;justify-content:flex-end;align-items:center;gap:7px}
+.vdigit{min-width:.72em;text-align:center;color:var(--ink)}
+.vslot{
+  width:1.02em;height:1.16em;border:2px dashed var(--g2);border-radius:7px;
+  background:#f2fbf7;display:inline-block;
+}
+.vslot.filled{
+  border-style:solid;background:#e9fbf3;color:var(--g2-dark);
+  display:inline-flex;align-items:center;justify-content:center;
+  animation:pop .3s ease;width:auto;min-width:1.02em;padding:0 .08em;
+}
+.drag-item.chip{
+  font-size:clamp(19px,5vw,26px);font-weight:900;color:var(--g2-dark);
+  background:#f2fbf7;border-color:#a8e0c8;
+  width:clamp(42px,11vw,52px);height:clamp(42px,11vw,52px);
+}
+
+/* ================= 点击计数 ================= */
+.count-area{
+  display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
+  padding:12px;background:#f7fffb;border:2px dashed #b7e8d5;border-radius:16px;
+  max-height:200px;overflow-y:auto;
+}
+.count-item{
+  font-size:clamp(19px,5.2vw,26px);line-height:1;
+  width:clamp(36px,9.5vw,46px);height:clamp(36px,9.5vw,46px);
+  display:flex;align-items:center;justify-content:center;
+  background:#fff;border:2px solid #e3f4ee;border-radius:11px;
+  cursor:pointer;font-family:inherit;padding:0;
+  transition:transform .12s,background .15s,border-color .15s,opacity .2s;
+}
+.count-item:active{transform:scale(.9)}
+.count-item.done{
+  background:#e9fbf3;border-color:var(--g2);opacity:.5;transform:scale(.9);
+}
+.count-table{
+  width:100%;max-width:350px;border:2px solid #a8e0c8;border-radius:14px;
+  overflow:hidden;background:#fff;
+}
+.ctrow{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  font-size:14px;font-weight:700;border-bottom:1px solid #e3f4ee;
+}
+.ctrow:last-child{border-bottom:none}
+.ctl{flex:0 0 auto;min-width:76px}
+.ctb{flex:1;color:var(--g2);letter-spacing:-2px;font-size:14px;word-break:break-all;line-height:1.2}
+.ctb i{color:#adb5bd;font-size:12px;font-style:normal;letter-spacing:0}
+.ctn{flex:0 0 auto;font-size:17px;font-weight:900;color:var(--g2-dark);min-width:22px;text-align:right}
+
+/* ================= 搭配连线 ================= */
+.link-board{
+  position:relative;display:flex;justify-content:space-between;gap:36px;
+  width:100%;max-width:400px;padding:10px 4px;
+}
+.link-svg{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:3;overflow:visible;
+}
+.link-line{
+  stroke:var(--g2);stroke-width:3;stroke-linecap:round;
+  animation:lineIn .3s ease;
+}
+@keyframes lineIn{from{opacity:0}to{opacity:1}}
+.link-col{display:flex;flex-direction:column;gap:12px;position:relative;z-index:2}
+.link-card{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 12px;background:#fff;border:2px solid #a8e0c8;border-radius:14px;
+  cursor:grab;touch-action:none;user-select:none;
+  font-size:12px;font-weight:800;color:var(--g2-dark);
+  transition:transform .12s,border-color .15s,background .15s,box-shadow .15s;
+}
+.link-card .lc-emoji{font-size:26px;line-height:1}
+.link-card.linked{border-color:var(--g2);background:#f2fbf7}
+.link-card.dragging{z-index:999;border-color:var(--g2);box-shadow:0 8px 20px rgba(12,166,120,.3)}
+.link-dot{position:absolute;top:-5px;right:-5px;font-size:9px;color:var(--g2)}
+
+/* ================= 拖着排队 ================= */
+.order-row{
+  display:flex;gap:10px;justify-content:center;align-items:stretch;
+  width:100%;max-width:400px;min-height:120px;
+}
+.order-card{
+  flex:1;max-width:112px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  padding:12px 6px;background:#fff;border:2px solid #cdeee0;border-radius:14px;
+  cursor:grab;touch-action:none;user-select:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.order-card .oc-emoji{font-size:clamp(24px,6.5vw,32px);line-height:1}
+.order-card .oc-name{font-size:12px;font-weight:800;color:var(--g2-dark)}
+.order-card.dragging{z-index:999;border-color:var(--g2);box-shadow:0 10px 24px rgba(12,166,120,.32)}
+
