@@ -2,7 +2,46 @@
    知识点清单来源：WorkBuddy/Claw/sh-kg 沪教版知识图谱（math_2a_shj，7 章 22 知识点）
    题目全部算法生成，仅借鉴知识点与题型设计，不抄录教材原文。 */
 (function () {
-  'use strict';
+  'use strict'
+
+  const VER = 'r8';
+
+  /* ---------- 设备自检（排查手机端问题用） ---------- */
+  const DEBUG = /[?&]debug=1/.test(location.search);
+  const ENV_INFO = {
+    pe: (typeof window.PointerEvent === 'function'),
+    touch: ('ontouchstart' in window),
+    maxTouch: (navigator.maxTouchPoints || 0),
+    dpr: window.devicePixelRatio || 1,
+    ua: navigator.userAgent
+  };
+  function envText() {
+    return 'Pointer Events: ' + (ENV_INFO.pe ? '支持' : '不支持') +
+      '　|　Touch: ' + (ENV_INFO.touch ? '支持' : '不支持') +
+      '　|　触点: ' + ENV_INFO.maxTouch +
+      '　|　视口: ' + window.innerWidth + '×' + window.innerHeight;
+  }
+  function initDebugLog() {
+    if (!DEBUG || window.__dlog) return;
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:36%;overflow:auto;' +
+      'background:rgba(0,0,0,.82);color:#7cf;font:11px/1.5 monospace;padding:6px;z-index:99999;' +
+      'white-space:pre-wrap;-webkit-user-select:text';
+    document.body.appendChild(box);
+    window.__dlog = function (msg) {
+      box.textContent = new Date().toLocaleTimeString() + '  ' + msg + '\n' + box.textContent;
+    };
+    window.__dlog('版本 ' + VER + ' | ' + envText());
+    ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click'].forEach(function (t) {
+      document.addEventListener(t, function (e) {
+        const el = e.target;
+        let c = '';
+        if (el && el.className && typeof el.className === 'string') c = '.' + el.className.split(' ')[0];
+        const tp = (e.touches && e.touches.length) ? ' touches=' + e.touches.length : '';
+        window.__dlog(t + ' → ' + (el ? el.tagName : '?') + c + tp);
+      }, true);
+    });
+  }
   const $ = (s) => document.querySelector(s);
 
   /* ================= 工具 ================= */
@@ -762,6 +801,7 @@
       box.appendChild(card);
     });
 
+    if ($('#verTag')) $('#verTag').textContent = VER;
     $('#homeStars').textContent = DB.stars;
     $('#homeDays').textContent = Object.keys(DB.days).length;
     $('#homeAcc').textContent = DB.answered ? Math.round(DB.correct / DB.answered * 100) + '%' : '—';
@@ -826,6 +866,9 @@
       (rows.length ? rows.map((x) => '<div class="day-row"><span class="d">' + x.unit + ' · ' + x.name +
         '</span><span>' + x.r + '% (' + x.n + '题) ' + (x.r >= 85 ? '✅' : x.r >= 60 ? '⚠️' : '❗') +
         '</span></div>').join('') : '<div class="p-row"><span>数据还不够</span><span>—</span></div>');
+    
+    const pv = document.getElementById('parentEnv');
+    if (pv) pv.textContent = '版本 ' + VER + '　|　' + envText();
     show('#view-parent');
   }
 
@@ -867,5 +910,6 @@
     tick: function () { tone(880, 0, 0.06, 'sine', 0.05); }
   };
   load();
+  initDebugLog();
   renderHome();
 })();
