@@ -12,6 +12,8 @@ const ASSETS = [
   './drag.js',
   './drag-extra.js',
   './match.js',
+  './mine.js',
+  './balance.js',
   './grade2.js',
   './manifest.json',
   './icon.svg'
