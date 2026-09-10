@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>触摸自检</title>
+<style>
+body{font-family:system-ui,-apple-system,"PingFang SC",sans-serif;margin:0;padding:14px;background:#f6fbf9;color:#212529}
+h1{font-size:19px;margin:0 0 6px}
+.sub{font-size:13px;color:#627d98;margin:0 0 14px;line-height:1.7}
+.card{background:#fff;border:2px solid #cdeee0;border-radius:16px;padding:14px;margin-bottom:12px}
+.big-btn{width:100%;padding:24px;font-size:19px;font-weight:800;border:none;border-radius:14px;
+  background:#0ca678;color:#fff;font-family:inherit;touch-action:manipulation}
+.big-btn:active{transform:scale(.97)}
+.result{font-size:15px;font-weight:800;margin-top:10px;min-height:22px;color:#868e96}
+.ok{color:#0ca678}
+.bad{color:#e03131}
+.dragbox{width:78px;height:78px;border-radius:16px;background:#fff3bf;border:3px solid #ffd43b;
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  touch-action:none;-webkit-user-select:none;user-select:none;position:relative;z-index:2}
+.dropzone{min-height:116px;border:3px dashed #a8e0c8;border-radius:16px;background:#f2fbf7;
+  display:flex;align-items:center;justify-content:center;padding:10px;margin-top:10px;
+  font-size:13px;color:#627d98;touch-action:none}
+.log{background:#16181d;color:#7cf;font:11px/1.7 ui-monospace,Consolas,monospace;padding:10px;
+  border-radius:12px;max-height:240px;overflow:auto;white-space:pre-wrap;-webkit-user-select:text}
+.env{font-size:11px;color:#868e96;line-height:1.7;word-break:break-all}
+</style>
+</head>
+<body>
+
+<h1>🔍 触摸自检</h1>
+<p class="sub">在手机上打开这一页 → 做两个动作 → <b>把整页截图发我</b>。这样我就能确定问题出在哪。</p>
+
+<div class="card">
+  <div style="font-size:15px;font-weight:800;margin-bottom:10px">① 点一下这个按钮</div>
+  <button class="big-btn" id="btn">点我</button>
+  <div class="result" id="btnResult">还没点到</div>
+</div>
+
+<div class="card">
+  <div style="font-size:15px;font-weight:800;margin-bottom:2px">② 把黄色方块拖进下面虚线框</div>
+  <div class="dragbox" id="box">🟨</div>
+  <div class="dropzone" id="zone">把方块拖到这里</div>
+  <div class="result" id="dragResult">还没拖</div>
+</div>
+
+<div class="card">
+  <div style="font-size:15px;font-weight:800;margin-bottom:8px">事件日志（最有用的一栏）</div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="card">
+  <div style="font-size:15px;font-weight:800;margin-bottom:6px">运行环境</div>
+  <div class="env" id="env"></div>
+</div>
+
+<script>
+(function () {
+  var logEl = document.getElementById('log');
+  function log(m) {
+    logEl.textContent = new Date().toLocaleTimeString() + '  ' + m + '\n' + logEl.textContent;
+  }
+
+  var HAS_PE = typeof window.PointerEvent === 'function';
+  document.getElementById('env').textContent =
+    'Pointer Events: ' + (HAS_PE ? '支持' : '不支持') +
+    '　Touch: ' + ('ontouchstart' in window ? '支持' : '不支持') +
+    '　触点数: ' + (navigator.maxTouchPoints || 0) +
+    '　视口: ' + window.innerWidth + '×' + window.innerHeight +
+    '　DPR: ' + (window.devicePixelRatio || 1) + '\n' + navigator.userAgent;
+
+  ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click'].forEach(function (t) {
+    document.addEventListener(t, function (e) {
+      var el = e.target;
+      var c = (el && typeof el.className === 'string' && el.className) ? '.' + el.className.split(' ')[0] : '';
+      var n = (e.touches && e.touches.length) ? ' touches=' + e.touches.length : '';
+      log(t + ' → ' + (el ? el.tagName : '?') + c + n);
+    }, true);
+  });
+
+  var n = 0;
+  var btn = document.getElementById('btn');
+  var res = document.getElementById('btnResult');
+  function hit() {
+    n++;
+    res.textContent = '✅ 收到点击 ' + n + ' 次';
+    res.className = 'result ok';
+    log('★ 按钮点击成功');
+  }
+  btn.addEventListener('click', hit);
+  btn.addEventListener('touchend', function (e) { e.preventDefault(); hit(); });
+
+  var box = document.getElementById('box');
+  var zone = document.getElementById('zone');
+  var dres = document.getElementById('dragResult');
+  var downEv = HAS_PE ? 'pointerdown' : 'touchstart';
+  var moveEv = HAS_PE ? 'pointermove' : 'touchmove';
+  var upEv = HAS_PE ? 'pointerup' : 'touchend';
+
+  function posOf(e) {
+    if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  box.addEventListener(downEv, function (e) {
+    var p0 = posOf(e);
+    if (!p0) return;
+    var sx = p0.x, sy = p0.y, lx = sx, ly = sy;
+    box.style.opacity = '.75';
+    log('拖拽开始 (' + Math.round(sx) + ',' + Math.round(sy) + ')');
+    function mv(ev) {
+      var p = posOf(ev);
+      if (!p) return;
+      lx = p.x; ly = p.y;
+      box.style.transform = 'translate(' + (p.x - sx) + 'px,' + (p.y - sy) + 'px)';
+    }
+    function up(ev) {
+      document.removeEventListener(moveEv, mv);
+      document.removeEventListener(upEv, up);
+      box.style.opacity = '';
+      box.style.transform = '';
+      var p = posOf(ev) || { x: lx, y: ly };
+      var el = null;
+      try { el = document.elementFromPoint(p.x, p.y); } catch (err) { }
+      var inZone = !!(el && (el === zone || zone.contains(el)));
+      log('拖拽结束，落点 ' + (el ? el.tagName : '空') + '，在框内: ' + (inZone ? '是' : '否') +
+        '，移动 ' + Math.round(Math.sqrt((lx - sx) * (lx - sx) + (ly - sy) * (ly - sy))) + 'px');
+      if (inZone) {
+        dres.textContent = '✅ 拖拽成功';
+        dres.className = 'result ok';
+      } else {
+        dres.textContent = '❌ 没落到框里（再试一次）';
+        dres.className = 'result bad';
+      }
+    }
+    document.addEventListener(moveEv, mv, { passive: false });
+    document.addEventListener(upEv, up);
+  });
+
+  log('自检页加载完成');
+})();
+</script>
+</body>
+</html>
