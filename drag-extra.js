@@ -259,6 +259,121 @@
     root.appendChild(scene);
   }
 
+  /* ================= 算式填空 ================= */
+  /* q = { prompt, expr, ans, digits:[...] }  把数字块拖进方框，让算式成立 */
+  function buildEqfill(q, root, done) {
+    var scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    var calc = el('div', 'eq-line');
+    calc.innerHTML = '<span class="eq-text">' + q.expr + '</span>' +
+      '<span class="eq-eq">=</span><span class="vslot big" data-slot="ans"></span>';
+    scene.appendChild(calc);
+
+    var pool = el('div', 'drag-pool');
+    var wrong = 0, solved = false;
+
+    q.digits.forEach(function (d) {
+      var chip = el('div', 'drag-item chip', String(d));
+      chip.setAttribute('data-val', String(d));
+      dragify(chip, {
+        onDrop: function (node, target) {
+          var slot = target && target.closest ? target.closest('.vslot') : null;
+          if (!slot) { shake(node); return; }
+          if (Number(node.getAttribute('data-val')) === q.ans) {
+            slot.textContent = node.getAttribute('data-val');
+            slot.classList.add('filled');
+            node.setAttribute('data-locked', '1');
+            node.classList.add('placed');
+            Sfx().ok();
+            if (!solved) { solved = true; setTimeout(function () { done(wrong <= 1); }, 650); }
+          } else {
+            shake(node); Sfx().bad(); wrong++;
+          }
+        }
+      });
+      pool.appendChild(chip);
+    });
+
+    scene.appendChild(pool);
+    scene.appendChild(el('div', 'drag-hint', '先算一算，再把答案拖进方框'));
+    root.appendChild(scene);
+  }
+
+  /* ================= 按每份数摆放 ================= */
+  /* q = { prompt, per, boxes, emoji }  每盘放 per 个，共 boxes 盘 */
+  function buildFill(q, root, done) {
+    var scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    var row = el('div', 'group-row');
+    var boxes = [];
+    for (var i = 0; i < q.boxes; i++) {
+      var b = el('div', 'group-box');
+      b.appendChild(el('div', 'gb-label', '第 ' + (i + 1) + ' 盘'));
+      b.appendChild(el('div', 'gb-items'));
+      row.appendChild(b);
+      boxes.push(b);
+    }
+
+    var pool = el('div', 'drag-pool');
+    var wrong = 0, solved = false;
+    var check = el('div', 'group-check');
+    var total = q.per * q.boxes;
+
+    function counts() {
+      return boxes.map(function (b) { return b.querySelectorAll('.drag-item').length; });
+    }
+
+    function verify() {
+      var cs = counts();
+      var leftInPool = pool.querySelectorAll('.drag-item').length;
+      var allPer = cs.every(function (n) { return n === q.per; });
+      if (allPer && leftInPool === 0 && !solved) {
+        solved = true;
+        Sfx().win();
+        check.className = 'group-check good';
+        check.textContent = '✅ ' + q.boxes + ' 盘，每盘 ' + q.per + ' 个　→　' +
+          q.boxes + ' × ' + q.per + ' = ' + total;
+        setTimeout(function () { done(wrong <= 2); }, 900);
+      } else {
+        check.className = 'group-check';
+        check.textContent = '现在每盘：' + cs.join(' / ') + ' 个（每盘要放 ' + q.per + ' 个）' +
+          (leftInPool > 0 ? '　还剩 ' + leftInPool + ' 个' : '');
+      }
+    }
+
+    for (var j = 0; j < total; j++) {
+      (function () {
+        var apple = el('div', 'drag-item apple', q.emoji);
+        dragify(apple, {
+          onDrop: function (node, target) {
+            var box = target && target.closest ? target.closest('.group-box') : null;
+            if (!box || solved) { shake(node); wrong++; return; }
+            // 每盘放满了就不能再放（防止一堆塞一盘）
+            if (box.querySelectorAll('.drag-item').length >= q.per) {
+              shake(node); Sfx().bad(); wrong++;
+              return;
+            }
+            node.setAttribute('data-locked', '1');
+            node.classList.add('placed');
+            box.querySelector('.gb-items').appendChild(node);
+            Sfx().tick();
+            verify();
+          }
+        });
+        pool.appendChild(apple);
+      })();
+    }
+
+    scene.appendChild(pool);
+    scene.appendChild(row);
+    scene.appendChild(check);
+    scene.appendChild(el('div', 'drag-hint', '每盘都放 ' + q.per + ' 个'));
+    verify();
+    root.appendChild(scene);
+  }
+
   /* ---------- 接入 ---------- */
   var orig = D.mount;
   D.mount = function (root, q, done) {
@@ -266,6 +381,8 @@
     if (q.type === 'place') return buildPlace(q, root, done);
     if (q.type === 'seat') return buildSeat(q, root, done);
     if (q.type === 'group') return buildGroup(q, root, done);
+    if (q.type === 'eqfill') return buildEqfill(q, root, done);
+    if (q.type === 'fill') return buildFill(q, root, done);
     return orig(root, q, done);
   };
 })();
