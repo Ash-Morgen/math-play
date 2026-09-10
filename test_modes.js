@@ -144,6 +144,25 @@ for (const m of MODES) {
         if (q.total / q.boxes < 2) err(m, '每盘只有 ' + (q.total / q.boxes) + ' 个，太简单');
         if (!q.emoji) err(m, 'emoji 缺失');
 
+      } else if (q.type === 'eqfill') {
+        if (!q.expr) err(m, 'expr 缺失');
+        if (!(q.ans > 0)) err(m, 'ans 非法: ' + q.ans);
+        if (q.digits.indexOf(q.ans) < 0) err(m, '数字块不含答案');
+        if (new Set(q.digits).size !== q.digits.length) err(m, '数字块有重复');
+        if (q.digits.length < 3) err(m, '数字块太少');
+        if (q.digits.some((d) => !(d > 0))) err(m, '数字块有非正数');
+        // 关键：算式实际求值必须等于答案（把 × − 换成 JS 运算符算一遍）
+        const js = q.expr.replace(/\u00D7/g, '*').replace(/\u2212/g, '-');
+        let val = null;
+        try { val = Function('"use strict";return (' + js + ')')(); } catch (e) { }
+        if (val !== q.ans) err(m, `算式 ${q.expr} 实际等于 ${val}，但 ans=${q.ans}`);
+
+      } else if (q.type === 'fill') {
+        if (!(q.per >= 2 && q.per <= 9)) err(m, 'per 不合理: ' + q.per);
+        if (!(q.boxes >= 2 && q.boxes <= 5)) err(m, 'boxes 不合理: ' + q.boxes);
+        if (!q.emoji) err(m, 'emoji 缺失');
+        if (q.per * q.boxes > 24) err(m, '总数太多: ' + q.per * q.boxes);
+
       } else {
         err(m, '未知拖拽类型: ' + q.type);
       }
