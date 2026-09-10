@@ -439,3 +439,25 @@
 }
 .group-check.good{background:#e9fbf3;color:var(--g2-dark);animation:pop .35s ease}
 
+
+/* ================= 算式填空 ================= */
+.eq-line{
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;
+  font-family:ui-monospace,Consolas,"Courier New",monospace;
+  font-size:clamp(20px,5.4vw,30px);font-weight:800;color:var(--ink);
+  padding:8px 4px;
+}
+.eq-text{white-space:nowrap;letter-spacing:1px}
+.eq-eq{color:var(--g2)}
+.vslot.big{
+  width:1.6em;height:1.3em;border-width:3px;border-radius:10px;
+}
+.vslot.big.filled{font-size:.95em}
+
+/* 带文字标签的拖拽物体（如各种钱币） */
+.drag-item.has-label{
+  flex-direction:column;width:auto;min-width:56px;height:auto;min-height:56px;
+  padding:7px 9px;gap:2px;font-size:20px;
+}
+.di-label{font-size:9px;font-weight:800;color:var(--g2-dark);line-height:1.15;white-space:nowrap}
+.drag-bin .drag-item .di-label{font-size:8px}
