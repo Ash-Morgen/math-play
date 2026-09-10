@@ -293,6 +293,11 @@
         };
       }
     },
+    {
+      id: 'mine-sum', unit: '1 100以内数的加减法（二）', icon: '\uD83D\uDC8E', name: '宝石矿工 · 凑数',
+      desc: '点两块石头凑出目标数', kind: 'mine',
+      mine: { targets: [20, 50, 100], timeSec: 50, cols: 4 }
+    },
 
     /* ========== 2. 欢乐购物街 ========== */
     {
@@ -415,6 +420,34 @@
       id: 'mul-match-all', unit: '3 表内乘法', icon: '🔥', name: '乘法消除 · 全口诀挑战',
       desc: '2~9 混合，冲高分', kind: 'match',
       match: { rows: 8, cols: 6, factorRange: [2, 9], maxVal: 81, timeSec: 150, targetScore: 320 }
+    },
+    {
+      id: 'balance-mul', unit: '3 表内乘法', icon: '\u2696', name: '乘法天平',
+      desc: '拖数字让天平平衡', kind: 'drag', round: 6,
+      gen() {
+        const a = ri(2, 9), b = ri(2, 9);
+        const ans = a * b;
+        const set = new Set([ans]);
+        let g = 0;
+        while (set.size < 4 && g++ < 80) {
+          // 干扰项特意用「常见的口诀记错」：多一个 a 或少一个 a / b
+          const mode = rnd(3);
+          let v;
+          if (mode === 0) v = ans + a;
+          else if (mode === 1) v = ans - a;
+          else v = ans + (rnd(2) ? b : -b);
+          if (v > 0 && v !== ans && v <= 81) set.add(v);
+        }
+        let k = 1;
+        while (set.size < 4 && k < 25) { if (ans + k <= 90) set.add(ans + k); k++; }
+        return {
+          kind: 'drag', type: 'balance',
+          prompt: '左盘是 ' + a + ' × ' + b + '，拖一个数到右盘让它平衡',
+          leftText: a + ' × ' + b,
+          ans: ans,
+          options: shuffle(Array.from(set))
+        };
+      }
     },
     {
       id: 'mul-apply', unit: '3 表内乘法', icon: '📝', name: '每盘放几个（拖苹果）',
@@ -694,6 +727,7 @@
   function startRound(modeId) {
     const m = MODES.find((x) => x.id === modeId) || MODES[0];
     if (m.kind === 'match') return startMatch(m);
+    if (m.kind === 'mine') return startMine(m);
     // 拖拽型玩法一次操作量大，轮次短一些（默认 10 题）
     cur = { mode: m, idx: 0, total: m.round || ROUND, q: null, stars: 0, correct: 0, combo: 0, locked: false };
     audio();
@@ -728,6 +762,35 @@
         '（目标 ' + m.match.targetScore + '）　·　消掉 ' + res.matched + ' 组';
       show('#view-result');
     });
+  }
+
+  // 宝石矿工：限时多关，一局定输赢
+  function startMine(m) {
+    cur = { mode: m, idx: 0, total: 1, q: null, stars: 0, correct: 0, combo: 0, locked: false };
+    audio();
+    show('#view-quiz');
+    $('#stageTag').textContent = m.name;
+    $('#progress').style.width = '100%';
+    $('#quizStars').textContent = '0';
+    $('#feedback').textContent = '';
+    $('#feedback').className = 'feedback';
+    $('#question').innerHTML = '';
+    const wrap = $('#answers');
+    wrap.innerHTML = '';
+    wrap.style.gridTemplateColumns = '';
+    if (window.__mgActive) window.__mgActive();
+    const g = window.MineGame.mount($('#question'), m.mine, function (res) {
+      cur.stars = res.stars;
+      record(res.stars > 0, res.stars, m.id);
+      save();
+      const st = res.stars;
+      $('#resultEmoji').textContent = st >= 3 ? '\uD83C\uDFC6' : st === 2 ? '\uD83C\uDF89' : st === 1 ? '\uD83D\uDC4D' : '\uD83D\uDCAA';
+      $('#resultTitle').textContent = st >= 3 ? '矿工之王！' : st === 2 ? '挖得不错！' : st === 1 ? '过关！' : '再来一次吧';
+      $('#resultStars').textContent = '\u2605'.repeat(st) + '\u2606'.repeat(3 - st);
+      $('#resultSub').textContent = '「' + m.name + '」挖到 ' + res.score + ' 颗宝石　·　消掉 ' + res.hits + ' 组';
+      show('#view-result');
+    });
+    window.__mgActive = function () { if (g && g.stop) g.stop(); };
   }
 
   function nextQuestion() {
