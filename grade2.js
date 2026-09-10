@@ -348,22 +348,19 @@
       }
     },
     {
-      id: 'mul-26', unit: '3 表内乘法', icon: '🎯', name: '2~6 的乘法口诀',
-      desc: '口诀求积',
-      gen() {
-        const a = ri(2, 6), b = ri(2, 9);
-        return { prompt: '<div class="ask">' + a + ' × ' + b + ' = ?</div>',
-                 options: numOptions(a * b), ans: String(a * b) };
-      }
+      id: 'mul-match-26', unit: '3 表内乘法', icon: '💥', name: '乘法消除 · 2~6 口诀',
+      desc: '点选 3 块凑算式，消除得分', kind: 'match',
+      match: { rows: 8, cols: 6, factorRange: [2, 6], maxVal: 36, timeSec: 120, targetScore: 160 }
     },
     {
-      id: 'mul-79', unit: '3 表内乘法', icon: '🎲', name: '7~9 的乘法口诀',
-      desc: '口诀求积',
-      gen() {
-        const a = ri(7, 9), b = ri(2, 9);
-        return { prompt: '<div class="ask">' + a + ' × ' + b + ' = ?</div>',
-                 options: numOptions(a * b), ans: String(a * b) };
-      }
+      id: 'mul-match-79', unit: '3 表内乘法', icon: '💥', name: '乘法消除 · 7~9 口诀',
+      desc: '点选 3 块凑算式，消除得分', kind: 'match',
+      match: { rows: 8, cols: 6, factorRange: [7, 9], maxVal: 81, timeSec: 120, targetScore: 260 }
+    },
+    {
+      id: 'mul-match-all', unit: '3 表内乘法', icon: '🔥', name: '乘法消除 · 全口诀挑战',
+      desc: '2~9 混合，冲高分', kind: 'match',
+      match: { rows: 8, cols: 6, factorRange: [2, 9], maxVal: 81, timeSec: 150, targetScore: 320 }
     },
     {
       id: 'mul-apply', unit: '3 表内乘法', icon: '📝', name: '用乘法解决实际问题',
@@ -603,11 +600,41 @@
 
   function startRound(modeId) {
     const m = MODES.find((x) => x.id === modeId) || MODES[0];
+    if (m.kind === 'match') return startMatch(m);
     // 拖拽型玩法一次操作量大，轮次短一些（默认 10 题）
     cur = { mode: m, idx: 0, total: m.round || ROUND, q: null, stars: 0, correct: 0, combo: 0, locked: false };
     audio();
     show('#view-quiz');
     nextQuestion();
+  }
+
+  // 消除玩法：限时一局定输赢，不走 10 题循环
+  function startMatch(m) {
+    cur = { mode: m, idx: 0, total: 1, q: null, stars: 0, correct: 0, combo: 0, locked: false };
+    audio();
+    show('#view-quiz');
+    $('#stageTag').textContent = m.name;
+    $('#progress').style.width = '100%';
+    $('#quizStars').textContent = '0';
+    $('#feedback').textContent = '';
+    $('#feedback').className = 'feedback';
+    $('#question').innerHTML = '';
+    const wrap = $('#answers');
+    wrap.innerHTML = '';
+    wrap.style.gridTemplateColumns = '';
+    if (window.__mgActive) window.__mgActive();   // 清掉上一局残留的计时器
+    window.MatchEngine.mount($('#question'), m.match, function (res) {
+      cur.stars = res.stars;
+      record(res.stars > 0, res.stars, m.id);
+      save();
+      const s = res.stars;
+      $('#resultEmoji').textContent = s >= 3 ? '🏆' : s === 2 ? '🎉' : s === 1 ? '👍' : '💪';
+      $('#resultTitle').textContent = s >= 3 ? '满分！太厉害了' : s === 2 ? '真棒！' : s === 1 ? '过关！' : '再来一次吧';
+      $('#resultStars').textContent = '★'.repeat(s) + '☆'.repeat(3 - s);
+      $('#resultSub').textContent = '「' + m.name + '」得分 ' + res.score +
+        '（目标 ' + m.match.targetScore + '）　·　消掉 ' + res.matched + ' 组';
+      show('#view-result');
+    });
   }
 
   function nextQuestion() {
@@ -721,6 +748,7 @@
 
   /* ================= 首页 ================= */
   function renderHome() {
+    if (window.__mgActive) window.__mgActive();   // 离开消除局时清计时器
     const box = $('#unitList');
     box.innerHTML = '';
     const units = [];
