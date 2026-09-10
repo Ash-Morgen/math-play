@@ -69,6 +69,14 @@
         node.style.transform = '';
         node.style.pointerEvents = '';
         // cancel 类事件的坐标常是 (0,0)，用最后已知位置兜底，否则会吸到左上角
+        // 手指几乎没移动 = 轻点。自己识别，不依赖浏览器的 click 合成：
+        // 部分 WebView 在 touch-action:none 下根本不发 click 事件。
+        const moved = Math.sqrt((lx - sx) * (lx - sx) + (ly - sy) * (ly - sy));
+        if (moved < 12) {
+          if (opts.onTap) opts.onTap(node);
+          return;
+        }
+
         const cancelled = (ev.type === 'pointercancel' || ev.type === 'touchcancel');
         let p = posOf(ev);
         if (!p || cancelled || (p.x === 0 && p.y === 0)) p = { x: lx, y: ly };
@@ -423,6 +431,7 @@
       card.dataset.idx = String(i);
       dragify(card, {
         near: '.link-card',
+        onTap: function (node) { onCardTap(node); },
         onDrop: function (node, target) {
           const other = target && target.closest ? target.closest('.link-card') : null;
           if (!other || other === node) { shake(node); return; }
@@ -433,7 +442,8 @@
           }
         }
       });
-      card.addEventListener('click', function () { onCardTap(card); });
+      // 用 onTap（引擎自己识别轻点）而不是 click：
+      // 手机 WebView 在某些情况下不会合成 click，靠 click 会「点了没反应」
       return card;
     }
 
