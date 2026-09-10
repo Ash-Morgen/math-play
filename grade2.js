@@ -595,10 +595,67 @@
 
   /* ================= 存储 ================= */
   const KEY = 'mathplay.g2.v2';   // v2：知识点按沪教五四学制图谱重排
-  let DB = { stars: 0, answered: 0, correct: 0, days: {}, modes: {} };
+
+  /* ---------- 家长锁：由家长按学校进度逐个单元解锁 ---------- */
+  const PASSCODE = '2468';
+  const LOCKED_UNITS = ['2 欢乐购物街', '3 表内乘法', '4 我的学校我的家', '5 分类'];
+  function isLocked(unit) {
+    return LOCKED_UNITS.indexOf(unit) >= 0 && DB.unlocked.indexOf(unit) < 0;
+  }
+  function unlock(unit) {
+    if (DB.unlocked.indexOf(unit) < 0) { DB.unlocked.push(unit); save(); }
+  }
+
+  /* 家长密码弹窗 */
+  function askPasscode(unit) {
+    const mask = document.createElement('div');
+    mask.className = 'lock-mask';
+    const shortName = unit.slice(unit.indexOf(' ') + 1);
+    mask.innerHTML =
+      '<div class="lock-box">' +
+        '<div class="lock-icon">\ud83d\udd12</div>' +
+        '<div class="lock-title">' + shortName + '</div>' +
+        '<div class="lock-sub">这一单元还没有解锁<br>请输入家长密码</div>' +
+        '<input class="lock-input" id="lockInput" type="tel" inputmode="numeric" ' +
+          'maxlength="4" placeholder="····" autocomplete="off">' +
+        '<div class="lock-err" id="lockErr"></div>' +
+        '<div class="lock-actions">' +
+          '<button class="lock-btn ghost" id="lockCancel">取消</button>' +
+          '<button class="lock-btn primary" id="lockOk">解锁</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(mask);
+    const input = mask.querySelector('#lockInput');
+    const err = mask.querySelector('#lockErr');
+    setTimeout(function () { try { input.focus(); } catch (e) { } }, 120);
+
+    function close() { if (mask.parentNode) document.body.removeChild(mask); }
+    function submit() {
+      if (input.value === PASSCODE) {
+        unlock(unit);
+        close();
+        renderHome();          // 先刷新界面；音效即使失败也不该挡住刷新
+        try { window.Sfx.win(); } catch (e) { }
+      } else {
+        err.textContent = '密码不对，再试一次';
+        input.value = '';
+        input.classList.add('shake');
+        setTimeout(function () { input.classList.remove('shake'); }, 460);
+        try { window.Sfx.bad(); } catch (e) { }
+      }
+    }
+    mask.querySelector('#lockOk').addEventListener('click', submit);
+    mask.querySelector('#lockCancel').addEventListener('click', close);
+    mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+  }
+
+   // v2：知识点按沪教五四学制图谱重排
+  let DB = { stars: 0, answered: 0, correct: 0, days: {}, modes: {}, unlocked: [] };
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
+      if (raw && !Array.isArray(DB.unlocked)) DB.unlocked = [];
       if (raw) DB = Object.assign(DB, JSON.parse(raw));
     } catch (e) { }
   }
@@ -789,15 +846,25 @@
       });
       const acc = answered ? Math.round(correct / answered * 100) + '%' : '—';
       const sp = u.indexOf(' ');
+      const locked = isLocked(u);
       const card = document.createElement('button');
-      card.className = 'unit-card';
-      card.innerHTML =
-        '<span class="uc-badge">' + u.slice(0, sp) + '</span>' +
-        '<span class="uc-body"><span class="uc-name">' + u.slice(sp + 1) + '</span>' +
-        '<span class="uc-meta">' + list.length + ' 个游戏　·　已练 ' + played +
-        ' 个　·　正确率 ' + acc + '</span></span>' +
-        '<span class="uc-arrow">\u203a</span>';
-      card.addEventListener('click', () => renderUnit(u));
+      card.className = 'unit-card' + (locked ? ' locked' : '');
+      if (locked) {
+        card.innerHTML =
+          '<span class="uc-badge lock">\ud83d\udd12</span>' +
+          '<span class="uc-body"><span class="uc-name">' + u.slice(sp + 1) + '</span>' +
+          '<span class="uc-meta">未解锁　·　请家长输入密码</span></span>' +
+          '<span class="uc-arrow">\ud83d\udd12</span>';
+        card.addEventListener('click', function () { askPasscode(u); });
+      } else {
+        card.innerHTML =
+          '<span class="uc-badge">' + u.slice(0, sp) + '</span>' +
+          '<span class="uc-body"><span class="uc-name">' + u.slice(sp + 1) + '</span>' +
+          '<span class="uc-meta">' + list.length + ' 个游戏　·　已练 ' + played +
+          ' 个　·　正确率 ' + acc + '</span></span>' +
+          '<span class="uc-arrow">\u203a</span>';
+        card.addEventListener('click', function () { renderUnit(u); });
+      }
       box.appendChild(card);
     });
 
@@ -896,6 +963,16 @@
   });
   $('#btnParent').addEventListener('click', renderParent);
   $('#btnParentBack').addEventListener('click', renderHome);
+  const relockBtn = $('#btnRelock');
+  if (relockBtn) {
+    relockBtn.addEventListener('click', function () {
+      if (confirm('要重新锁上 2~5 单元吗？\n（锁上后需要家长密码才能再打开）')) {
+        DB.unlocked = [];
+        save();
+        renderParent();
+      }
+    });
+  }
   $('#btnReset').addEventListener('click', () => {
     if (confirm('确定清空全部练习记录？')) {
       DB = { stars: 0, answered: 0, correct: 0, days: {}, modes: {} };
