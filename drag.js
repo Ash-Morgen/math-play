@@ -77,7 +77,9 @@
     });
 
     q.items.forEach(function (it) {
-      const item = el('div', 'drag-item', it.emoji);
+      // 带 label 的物体显示「图标+文字」，否则光看 emoji 分不清（如各种钱币）
+      const item = el('div', 'drag-item' + (it.label ? ' has-label' : ''),
+        it.emoji + (it.label ? '<b class="di-label">' + it.label + '</b>' : ''));
       item.dataset.group = it.group;
       dragify(item, {
         onDrop: function (node, target) {
