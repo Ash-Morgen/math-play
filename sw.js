@@ -1,12 +1,15 @@
 /* 数学岛 — Service Worker
    策略：network-first（在线永远拿最新代码，离线回退缓存）
    自用场景下开发迭代频繁，缓存优先会导致改了代码刷新看不到，因此不用 cache-first。 */
-const CACHE = 'mathplay-v2';
+const CACHE = 'mathplay-v3';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './grade2.html',
+  './grade2.css',
+  './grade2.js',
   './manifest.json',
   './icon.svg'
 ];

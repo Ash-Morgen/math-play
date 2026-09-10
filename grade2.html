@@ -3,14 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#4c6ef5">
+<meta name="theme-color" content="#0ca678">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="数学岛">
-<title>数学岛 · 数感训练</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-title" content="二上闯关">
+<title>二年级上 · 同步闯关（沪教版）</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="grade2.css">
 </head>
 <body>
 
@@ -19,15 +17,12 @@
   <!-- ========== 首页 ========== -->
   <section id="view-home" class="view active">
     <header class="hero">
-      <div class="logo">🏝️</div>
-      <h1>数学岛</h1>
-      <p class="sub">每天 10 分钟，玩出好数感</p>
+      <div class="logo">📐</div>
+      <h1>二年级上 · 同步闯关</h1>
+      <p class="sub">沪教版 · 按教材单元编排</p>
     </header>
 
-    <div class="card">
-      <h2 class="card-title">选一个难度</h2>
-      <div class="level-list" id="levelList"><!-- JS 注入 --></div>
-    </div>
+    <div id="unitList"><!-- JS 注入：按单元分组 --></div>
 
     <div class="card stats-card">
       <div class="stat"><span class="stat-num" id="homeStars">0</span><span class="stat-lbl">总星星</span></div>
@@ -35,8 +30,8 @@
       <div class="stat"><span class="stat-num" id="homeAcc">—</span><span class="stat-lbl">正确率</span></div>
     </div>
 
-    <a class="btn btn-primary" href="grade2.html" style="margin-bottom:12px;text-decoration:none;text-align:center">📐 二年级上 · 同步闯关（沪教版）</a>
     <button class="btn btn-ghost" id="btnParent">家长报告</button>
+    <a class="btn btn-ghost" href="index.html">← 回到数感训练</a>
   </section>
 
   <!-- ========== 答题 ========== -->
@@ -48,11 +43,11 @@
     </header>
 
     <div class="quiz-body">
-      <div class="stage-tag" id="stageTag">数一数</div>
-      <div class="question" id="question"><!-- 题目区 --></div>
+      <div class="stage-tag" id="stageTag">乘法与除法</div>
+      <div class="question" id="question"></div>
     </div>
 
-    <div class="answers" id="answers"><!-- 选项 --></div>
+    <div class="answers" id="answers"></div>
     <div class="feedback" id="feedback"></div>
   </section>
 
@@ -70,17 +65,16 @@
 
   <!-- ========== 家长报告 ========== -->
   <section id="view-parent" class="view">
-    <header class="hero small">
-      <h1>家长报告</h1>
-    </header>
+    <header class="hero small"><h1>家长报告</h1></header>
     <div class="card" id="parentStats"></div>
     <div class="card" id="parentDaily"></div>
+    <div class="card" id="parentModes"></div>
     <button class="btn btn-ghost" id="btnParentBack">返回</button>
     <button class="btn btn-danger" id="btnReset">清空记录</button>
   </section>
 
 </div>
 
-<script src="app.js"></script>
+<script src="grade2.js"></script>
 </body>
 </html>

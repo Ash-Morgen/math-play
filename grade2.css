@@ -1,0 +1,87 @@
+/* 二年级上同步闯关 — 追加样式（基础样式复用 styles.css） */
+:root{
+  --g2:#0ca678;
+  --g2-dark:#087f5b;
+}
+
+/* 单元分组 */
+.unit-block{margin-bottom:16px}
+.unit-title{
+  display:flex;align-items:center;gap:8px;
+  font-size:14px;font-weight:800;color:var(--g2-dark);
+  padding:0 4px 8px;
+}
+.unit-title .u-badge{
+  background:var(--g2);color:#fff;font-size:11px;
+  padding:2px 8px;border-radius:99px;font-weight:700;
+}
+
+/* 模式按钮 */
+.mode-btn{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 15px;border:2px solid #e3f4ee;border-radius:16px;
+  background:#fbfffd;cursor:pointer;text-align:left;
+  font-size:16px;font-weight:700;color:var(--ink);
+  margin-bottom:9px;transition:transform .12s,border-color .12s,background .12s;
+}
+.mode-btn:active{transform:scale(.975)}
+.mode-btn:hover{border-color:var(--g2);background:#f2fbf7}
+.mode-btn .m-emoji{font-size:24px}
+.mode-btn .m-meta{display:flex;flex-direction:column;gap:2px}
+.mode-btn .m-desc{font-size:12px;color:var(--ink-soft);font-weight:400}
+
+/* 乘法分组图形：几个几 */
+.groups{
+  display:flex;flex-wrap:wrap;gap:12px;justify-content:center;
+  margin-bottom:6px;max-width:100%;
+}
+.grp{
+  background:#f2fbf7;border:2px dashed #a8e0c8;border-radius:14px;
+  padding:7px 11px;font-size:clamp(17px,4.2vw,25px);
+  letter-spacing:1.5px;line-height:1.15;
+}
+.ask{
+  font-size:clamp(14px,3.6vw,18px);font-weight:700;
+  color:var(--ink);text-align:center;line-height:1.4;
+}
+
+/* 平均分盘子 */
+.plates{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:6px}
+.plate{
+  min-width:64px;min-height:64px;border:3px solid #a8e0c8;border-radius:50%;
+  background:#f7fffb;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(15px,3.8vw,22px);padding:8px;
+}
+/* 条形统计图 */
+.chart{display:flex;align-items:flex-end;gap:14px;height:150px;padding:0 6px;margin:4px 0 10px}
+.bar-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.bar{
+  width:100%;max-width:54px;background:linear-gradient(180deg,#38d9a9,#0ca678);
+  border-radius:8px 8px 3px 3px;transition:height .4s ease;
+  display:flex;align-items:flex-start;justify-content:center;
+  color:#fff;font-size:12px;font-weight:700;padding-top:3px;
+}
+.bar-lbl{font-size:13px;color:var(--ink-soft);font-weight:700}
+
+/* 角（SVG） */
+svg.angle{display:block;margin:0 auto 6px;max-width:100%}
+/* 倍数对比 */
+.rows{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;width:100%;max-width:420px}
+.row-line{display:flex;align-items:center;gap:8px;font-size:clamp(16px,4vw,22px);flex-wrap:wrap}
+.row-line .tag{font-size:13px;font-weight:800;color:var(--ink-soft);min-width:38px}
+
+/* 选项：算式类文本按钮 */
+.ans-btn.text{font-size:clamp(16px,4vw,23px);padding:19px 6px;letter-spacing:.5px}
+.ans-btn.wide{grid-column:span 2}
+
+/* 主色改成绿色系（同步闯关主题） */
+.btn-primary{background:var(--g2);box-shadow:0 4px 14px rgba(12,166,120,.32)}
+.btn-primary:hover{filter:brightness(1.06)}
+.ans-btn:hover{border-color:var(--g2)}
+.ans-btn.correct{border-color:var(--g2);background:#e9fbf3;color:var(--g2)}
+.stage-tag{color:var(--g2);background:#e6f9f1}
+.blank{border-bottom-color:var(--g2)}
+.progress{background:linear-gradient(90deg,var(--g2),#63e6be)}
+.icon-btn{background:#e3f7f0;color:var(--g2-dark)}
+.dot{background:var(--g2)}
+.dot.b{background:#ffa94d}
