@@ -30,6 +30,7 @@ function err(m, msg) { errors.push(`[${m.id}] ${msg}`); bad++; }
 
 for (const m of MODES) {
   if (m.kind === 'match') continue;                       // 消除玩法另测
+  if (m.kind === 'mine') continue;                        // 宝石矿工是限时多关玩法，无 gen
   for (let i = 0; i < N; i++) {
     total++;
     let q;
@@ -175,6 +176,21 @@ for (const m of MODES) {
         if (!(q.a >= 11 && q.a <= 99)) err(m, 'a 越界: ' + q.a);
         if (!(q.b >= 11 && q.b <= 99)) err(m, 'b 越界: ' + q.b);
         if (q.op === '\u2212' && q.a <= q.b) err(m, '减法出现非正结果: ' + q.a + '-' + q.b);
+
+      } else if (q.type === 'balance') {
+        if (!q.options || q.options.length < 3) err(m, '选项不足');
+        if (q.options.indexOf(q.ans) < 0) err(m, '选项里没有正确答案');
+        if (new Set(q.options).size !== q.options.length) err(m, '选项有重复');
+        if (!q.leftText) err(m, '缺左盘算式');
+        // 天平的命脉：两边必须真的相等，否则这题无解
+        const t = String(q.leftText).replace(/\u2212/g, '-').replace(/\s/g, '');
+        const mm = t.match(/^(\d+)([+\-\u00d7])(\d+)$/);
+        if (!mm) err(m, '左盘算式格式异常: ' + q.leftText);
+        else {
+          const x = Number(mm[1]), y = Number(mm[3]);
+          const v = mm[2] === '+' ? x + y : mm[2] === '-' ? x - y : x * y;
+          if (v !== q.ans) err(m, `天平两边不相等: ${q.leftText} = ${v}，答案却是 ${q.ans}`);
+        }
 
       } else {
         err(m, '未知拖拽类型: ' + q.type);
