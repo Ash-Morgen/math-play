@@ -290,6 +290,26 @@
       }
     },
 
+    {
+      id: 'pay-drag', unit: '2 欢乐购物街', icon: '🖐️', name: '拖钱币付钱',
+      desc: '把币拖到收银台凑够钱', kind: 'drag', round: 6,
+      gen() {
+        const bag = pick([
+          [1, 1, 2, 5, 10], [1, 2, 5, 5, 10], [1, 1, 5, 10, 10],
+          [2, 2, 5, 10, 20], [1, 2, 2, 5, 10]
+        ]);
+        const picks = shuffle(bag.slice()).slice(0, ri(2, 3));
+        const price = picks.reduce(function (a, b) { return a + b; }, 0);
+        const item = pick(['🧸 玩具', '📚 图书', '✏️ 铅笔盒', '⚽ 皮球', '🎁 礼物']);
+        return {
+          kind: 'drag', type: 'pay',
+          prompt: '🛒 ' + item + ' 要 <b>' + price + ' 元</b><br>把下面的钱币拖到收银台付款',
+          price: price,
+          coins: bag
+        };
+      }
+    },
+
     /* ========== 3. 表内乘法 ========== */
     {
       id: 'mul-intro', unit: '3 表内乘法', icon: '✖️', name: '乘法的初步认识',
@@ -496,6 +516,30 @@
       }
     },
 
+    {
+      id: 'classify-drag', unit: '5 分类', icon: '🖐️', name: '拖拽分类（动手版）',
+      desc: '把图形拖进对应的筐', kind: 'drag', round: 6,
+      gen() {
+        const pools = [
+          [{ g: 'apple', label: '苹果 🍎', emoji: '🍎' }, { g: 'banana', label: '香蕉 🍌', emoji: '🍌' }],
+          [{ g: 'red', label: '红色 🔴', emoji: '🔴' }, { g: 'blue', label: '蓝色 🔵', emoji: '🔵' }],
+          [{ g: 'round', label: '圆形 🟡', emoji: '🟡' }, { g: 'square', label: '方块 🟦', emoji: '🟦' }]
+        ];
+        const pool = pick(pools);
+        const items = [];
+        pool.forEach(function (x) {
+          const n = ri(2, 4);
+          for (let i = 0; i < n; i++) items.push({ emoji: x.emoji, group: x.g });
+        });
+        return {
+          kind: 'drag', type: 'classify',
+          prompt: '把 ' + items.length + ' 个图形拖到对应的筐里',
+          items: shuffle(items),
+          bins: pool.map(function (x) { return { label: x.label, accept: x.g }; })
+        };
+      }
+    },
+
     /* ========== 6. 数学广场 ========== */
     {
       id: 'combo', unit: '6 数学广场', icon: '🎨', name: '搭配问题',
@@ -559,18 +603,21 @@
 
   function startRound(modeId) {
     const m = MODES.find((x) => x.id === modeId) || MODES[0];
-    cur = { mode: m, idx: 0, q: null, stars: 0, correct: 0, combo: 0, locked: false };
+    // 拖拽型玩法一次操作量大，轮次短一些（默认 10 题）
+    cur = { mode: m, idx: 0, total: m.round || ROUND, q: null, stars: 0, correct: 0, combo: 0, locked: false };
     audio();
     show('#view-quiz');
     nextQuestion();
   }
 
   function nextQuestion() {
-    if (cur.idx >= ROUND) return finishRound();
+    if (cur.idx >= cur.total) return finishRound();
     const q = cur.mode.gen();
-    const opts = q.options.slice();
-    if (opts.indexOf(q.ans) < 0) opts.push(q.ans);
-    q.options = shuffle(opts);
+    if (q.options) {
+      const opts = q.options.slice();
+      if (opts.indexOf(q.ans) < 0) opts.push(q.ans);
+      q.options = shuffle(opts);
+    }
     cur.q = q;
     renderQuestion();
   }
@@ -579,15 +626,29 @@
     const q = cur.q;
     cur.locked = false;
     $('#stageTag').textContent = cur.mode.name;
-    $('#progress').style.width = (cur.idx / ROUND * 100) + '%';
+    $('#progress').style.width = (cur.idx / cur.total * 100) + '%';
     $('#quizStars').textContent = cur.stars;
     $('#feedback').textContent = '';
     $('#feedback').className = 'feedback';
+
+    // ---- 拖拽型：交给 DragEngine 渲染 ----
+    if (q.kind === 'drag') {
+      $('#question').innerHTML = '';
+      const wrap = $('#answers');
+      wrap.innerHTML = '';
+      wrap.style.gridTemplateColumns = '';
+      window.DragEngine.mount($('#question'), q, function (ok) {
+        resolveAnswer(ok, '再试一次，注意题目要求');
+      });
+      return;
+    }
+
     $('#question').innerHTML = q.prompt;
 
     const wrap = $('#answers');
     wrap.innerHTML = '';
     const longest = Math.max.apply(null, q.options.map((o) => String(o).length));
+    // 三选一（如「锐角/直角/钝角」）或长文本选项 → 单列竖排，避免半行空格
     wrap.style.gridTemplateColumns = (q.options.length === 3 || longest > 5) ? '1fr' : 'repeat(2, 1fr)';
     q.options.forEach((v) => {
       const b = document.createElement('button');
@@ -601,16 +662,22 @@
 
   function choose(val, btn) {
     if (!cur || cur.locked) return;
-    cur.locked = true;
     const q = cur.q;
     const ok = val === String(q.ans);
     document.querySelectorAll('.ans-btn').forEach((b) => {
       b.disabled = true;
       if (b.dataset.val === String(q.ans)) b.classList.add('correct');
     });
+    if (!ok && btn) btn.classList.add('wrong');
+    resolveAnswer(ok, '再看看，答案是 ' + q.ans);
+  }
+
+  // 选择题与拖拽题共用的结算入口
+  function resolveAnswer(ok, failMsg) {
+    if (cur.locked) return;
+    cur.locked = true;
     if (ok) {
       cur.stars++; cur.correct++; cur.combo++;
-      btn.classList.add('correct');
       sfxOk();
       $('#feedback').className = 'feedback';
       $('#feedback').textContent = cur.combo >= 3 ? '连对 ' + cur.combo + ' 题！🔥' : '答对啦 👍';
@@ -618,15 +685,14 @@
       record(true, 1, cur.mode.id);
     } else {
       cur.combo = 0;
-      btn.classList.add('wrong');
       sfxBad();
       $('#feedback').className = 'feedback bad';
-      $('#feedback').textContent = '再看看，答案是 ' + q.ans;
+      $('#feedback').textContent = failMsg || '再试一次';
       record(false, 0, cur.mode.id);
     }
     save();
     $('#quizStars').textContent = cur.stars;
-    setTimeout(() => { cur.idx++; nextQuestion(); }, ok ? 720 : 1600);
+    setTimeout(() => { cur.idx++; nextQuestion(); }, ok ? 820 : 1700);
   }
 
   function popCombo(n) {
@@ -641,14 +707,15 @@
     $('#progress').style.width = '100%';
     const s = cur.stars;
     let emoji = '💪', title = '继续加油！', stars = '⭐'.repeat(Math.max(1, Math.round(s / 3.4)));
-    if (s === ROUND) { emoji = '🏆'; title = '满分！太厉害了'; stars = '⭐⭐⭐⭐⭐'; }
-    else if (s >= 8) { emoji = '🎉'; title = '真棒！'; }
-    else if (s >= 5) { emoji = '👍'; title = '不错哦！'; }
-    if (s === ROUND) sfxWin(); else if (s >= 8) sfxOk();
+    const full = cur.total;
+    if (s === full) { emoji = '🏆'; title = '满分！太厉害了'; stars = '⭐⭐⭐⭐⭐'; }
+    else if (s >= full * 0.8) { emoji = '🎉'; title = '真棒！'; }
+    else if (s >= full * 0.5) { emoji = '👍'; title = '不错哦！'; }
+    if (s === full) sfxWin(); else if (s >= full * 0.8) sfxOk();
     $('#resultEmoji').textContent = emoji;
     $('#resultTitle').textContent = title;
     $('#resultStars').textContent = stars;
-    $('#resultSub').textContent = '「' + cur.mode.name + '」答对 ' + s + ' / ' + ROUND + ' 题　·　获得 ' + s + ' 颗星';
+    $('#resultSub').textContent = '「' + cur.mode.name + '」答对 ' + s + ' / ' + full + ' 题　·　获得 ' + s + ' 颗星';
     show('#view-result');
   }
 
@@ -739,6 +806,8 @@
   });
 
   /* ================= 启动 ================= */
+  // 供 drag.js 调用音效
+  window.Sfx = { ok: sfxOk, bad: sfxBad, win: sfxWin, combo: sfxCombo };
   load();
   renderHome();
 })();
