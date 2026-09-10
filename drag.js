@@ -70,17 +70,23 @@
         node.style.transform = '';
         node.style.pointerEvents = '';
         // cancel 类事件的坐标常是 (0,0)，用最后已知位置兜底，否则会吸到左上角
-        // 手指几乎没移动 = 轻点。自己识别，不依赖浏览器的 click 合成：
-        // 部分 WebView 在 touch-action:none 下根本不发 click 事件。
+        // ---- 轻点识别 ----
+        // 不依赖浏览器合成 click（部分 WebView 在 touch-action:none 下不发）。
+        // 判定方式：抬手时手指若仍在原元素上 → 就是点它（别管移了几像素），
+        // 真人手指按下去会抖 5~15px，只靠距离阈值会把点击误判成拖拽。
         const moved = Math.sqrt((lx - sx) * (lx - sx) + (ly - sy) * (ly - sy));
-        if (moved < 12) {
-          if (opts.onTap) opts.onTap(node);
-          return;
-        }
-
         const cancelled = (ev.type === 'pointercancel' || ev.type === 'touchcancel');
         let p = posOf(ev);
         if (!p || cancelled || (p.x === 0 && p.y === 0)) p = { x: lx, y: ly };
+
+        let upEl = null;
+        try { upEl = document.elementFromPoint(p.x, p.y); } catch (e) { }
+        const stillOnSelf = !!(upEl && (upEl === node || node.contains(upEl)));
+
+        if (!cancelled && opts.onTap && (stillOnSelf || moved < 25)) {
+          opts.onTap(node);
+          return;
+        }
 
         let target = null;
         try { target = document.elementFromPoint(p.x, p.y); } catch (_) { }
