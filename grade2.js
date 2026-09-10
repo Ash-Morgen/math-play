@@ -277,7 +277,7 @@
       }
     },
     {
-      id: 'div-rem', unit: '四 乘法、除法', icon: '🔘', name: '有余数的除法', desc: '25 ÷ 4 = 6 … 1',
+      id: 'div-rem', unit: '四 乘法、除法', icon: '🔘', name: '有余数的除法', desc: '25 ÷ 4 = 6 …… 1',
       gen() {
         const b = ri(2, 9), q = ri(2, 9), r = ri(1, b - 1), a = b * q + r;
         const correct = q + ' …… ' + r;
