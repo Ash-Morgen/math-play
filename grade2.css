@@ -30,51 +30,84 @@
 .mode-btn .m-meta{display:flex;flex-direction:column;gap:2px}
 .mode-btn .m-desc{font-size:12px;color:var(--ink-soft);font-weight:400}
 
-/* 乘法分组图形：几个几 */
+/* ---------- 题目渲染 ---------- */
+/* 竖式（右对齐等宽） */
+.vcalc{
+  display:inline-block;
+  font-family:ui-monospace,Consolas,"Courier New",monospace;
+  font-size:clamp(26px,6.5vw,38px);font-weight:800;line-height:1.32;
+  text-align:right;margin-bottom:10px;padding:0 10px;
+}
+.vrow{display:flex;justify-content:flex-end;align-items:baseline;gap:6px}
+.vop{color:var(--g2);margin-right:2px}
+.vline{border-top:3px solid var(--ink);margin-top:5px;min-width:2.4em}
+
+/* 提示小字 */
+.hint{font-size:13px;color:var(--ink-soft);font-weight:400;display:inline-block;margin-top:5px}
+
+/* 连加连减算式行 */
+.addline{
+  font-size:clamp(19px,4.8vw,28px);font-weight:800;text-align:center;
+  letter-spacing:1px;margin-bottom:10px;color:var(--ink);word-break:break-word;
+}
+
+/* 分组实物：几个几 */
 .groups{
   display:flex;flex-wrap:wrap;gap:12px;justify-content:center;
-  margin-bottom:6px;max-width:100%;
+  margin-bottom:8px;max-width:100%;
 }
 .grp{
   background:#f2fbf7;border:2px dashed #a8e0c8;border-radius:14px;
   padding:7px 11px;font-size:clamp(17px,4.2vw,25px);
   letter-spacing:1.5px;line-height:1.15;
 }
+
+/* 方位十字 */
+.compass{
+  display:grid;grid-template-columns:repeat(3,minmax(50px,66px));
+  gap:6px;justify-content:center;margin-bottom:10px;
+}
+.cdir{
+  display:flex;align-items:center;justify-content:center;
+  background:#f2fbf7;border:2px solid #a8e0c8;border-radius:12px;
+  padding:9px 4px;font-size:clamp(16px,4vw,20px);font-weight:800;color:var(--ink);
+}
+.cdir.on{background:var(--g2);color:#fff;border-color:var(--g2)}
+.cctr{display:flex;align-items:center;justify-content:center;font-size:26px}
+
+/* 人民币 */
+.money{font-size:clamp(28px,7vw,40px);text-align:center;margin-bottom:10px;letter-spacing:6px}
+
+/* 图标行（分类 / 搭配 / 统计） */
+.items{
+  font-size:clamp(20px,5vw,30px);text-align:center;letter-spacing:4px;
+  margin-bottom:10px;line-height:1.55;word-break:break-word;
+}
+.items.small{
+  font-size:clamp(15px,3.8vw,21px);letter-spacing:2px;line-height:1.75;
+  max-height:100px;overflow:hidden;
+}
+
+/* 统计表 */
+.table{
+  max-width:290px;margin:0 auto 10px;border:2px solid #a8e0c8;
+  border-radius:12px;overflow:hidden;
+}
+.trow{
+  display:flex;justify-content:space-between;padding:8px 14px;
+  font-size:16px;font-weight:700;border-bottom:1px solid #e3f4ee;
+}
+.trow:last-child{border-bottom:none}
+.trow span:last-child{color:var(--g2);font-weight:800}
+
+/* 题目提问文字 */
 .ask{
   font-size:clamp(14px,3.6vw,18px);font-weight:700;
-  color:var(--ink);text-align:center;line-height:1.4;
+  color:var(--ink);text-align:center;line-height:1.45;
 }
 
-/* 平均分盘子 */
-.plates{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:6px}
-.plate{
-  min-width:64px;min-height:64px;border:3px solid #a8e0c8;border-radius:50%;
-  background:#f7fffb;display:flex;align-items:center;justify-content:center;
-  font-size:clamp(15px,3.8vw,22px);padding:8px;
-}
-/* 条形统计图 */
-.chart{display:flex;align-items:flex-end;gap:14px;height:150px;padding:0 6px;margin:4px 0 10px}
-.bar-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
-.bar{
-  width:100%;max-width:54px;background:linear-gradient(180deg,#38d9a9,#0ca678);
-  border-radius:8px 8px 3px 3px;transition:height .4s ease;
-  display:flex;align-items:flex-start;justify-content:center;
-  color:#fff;font-size:12px;font-weight:700;padding-top:3px;
-}
-.bar-lbl{font-size:13px;color:var(--ink-soft);font-weight:700}
-
-/* 角（SVG） */
-svg.angle{display:block;margin:0 auto 6px;max-width:100%}
-/* 倍数对比 */
-.rows{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;width:100%;max-width:420px}
-.row-line{display:flex;align-items:center;gap:8px;font-size:clamp(16px,4vw,22px);flex-wrap:wrap}
-.row-line .tag{font-size:13px;font-weight:800;color:var(--ink-soft);min-width:38px}
-
-/* 选项：算式类文本按钮 */
-.ans-btn.text{font-size:clamp(16px,4vw,23px);padding:19px 6px;letter-spacing:.5px}
-.ans-btn.wide{grid-column:span 2}
-
-/* 主色改成绿色系（同步闯关主题） */
+/* ---------- 选项与主题色 ---------- */
+.ans-btn.text{font-size:clamp(15px,3.7vw,21px);padding:19px 8px;letter-spacing:.3px;line-height:1.35}
 .btn-primary{background:var(--g2);box-shadow:0 4px 14px rgba(12,166,120,.32)}
 .btn-primary:hover{filter:brightness(1.06)}
 .ans-btn:hover{border-color:var(--g2)}
@@ -85,3 +118,9 @@ svg.angle{display:block;margin:0 auto 6px;max-width:100%}
 .icon-btn{background:#e3f7f0;color:var(--g2-dark)}
 .dot{background:var(--g2)}
 .dot.b{background:#ffa94d}
+
+/* 大屏 */
+@media (min-width:768px){
+  .items.small{max-height:130px}
+  .vcalc{font-size:42px}
+}
