@@ -20,7 +20,8 @@
   /* 同时支持 Pointer Events 与 Touch Events：
      部分手机内置浏览器（WebView）不支持 pointer* 事件，
      只写 pointer* 会导致「怎么拖都没反应」。 */
-  const HAS_PE = typeof window.PointerEvent === 'function';
+  const HAS_PE = typeof window.PointerEvent === 'function' &&
+    !/[?&]forcetouch=1/.test(location.search);   // ?forcetouch=1 可强制走触摸分支（自测用）
 
   /* 从任意事件里取坐标（touchend 时 touches 为空，得用 changedTouches） */
   function posOf(e) {
