@@ -1,6 +1,6 @@
-/* 二年级上 · 同步闯关（沪教版）
-   按教材单元编排，每个模式对应教材中的一个知识点。
-   设计原则：题目全部算法生成（非题库抄录），每题自带具象图形辅助理解。 */
+/* 二年级上 · 同步闯关（沪教版 · 五四学制）
+   知识点清单来源：WorkBuddy/Claw/sh-kg 沪教版知识图谱（math_2a_shj，7 章 22 知识点）
+   题目全部算法生成，仅借鉴知识点与题型设计，不抄录教材原文。 */
 (function () {
   'use strict';
   const $ = (s) => document.querySelector(s);
@@ -21,6 +21,7 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
       String(d.getDate()).padStart(2, '0');
   };
+  const EMOJI = ['🍎', '🍊', '⭐', '🎈', '🐟', '🌸', '🍪', '🚗', '🍌', '🐰'];
 
   /* ================= 音效 ================= */
   let actx = null;
@@ -53,7 +54,7 @@
   /* ================= 选项生成 ================= */
   function numOptions(ans) {
     const set = new Set([String(ans)]);
-    const pool = shuffle([ans + 1, ans - 1, ans + 2, ans - 2, ans * 2, ans + 10, ans + 5]);
+    const pool = shuffle([ans + 1, ans - 1, ans + 2, ans - 2, ans + 10, ans - 10, ans + 5, ans - 5]);
     for (const v of pool) { if (set.size >= 4) break; if (v >= 0 && v !== ans) set.add(String(v)); }
     let g = 0;
     while (set.size < 4 && g++ < 60) set.add(String(ri(0, Math.max(9, ans + 6))));
@@ -64,279 +65,374 @@
     for (const w of wrongs) { if (set.size >= 4) break; if (w && w !== correct) set.add(w); }
     return shuffle(Array.from(set));
   }
-  const EMOJI = ['🍎', '🍊', '⭐', '🎈', '🐟', '🌸', '🍪', '🚗'];
+  // 十个整十数选项（估算用）
+  function tensOptions(ans) {
+    const set = new Set([String(ans)]);
+    const pool = shuffle([ans + 10, ans - 10, ans + 20, ans - 20]);
+    for (const v of pool) { if (set.size >= 4) break; if (v >= 0 && v !== ans) set.add(String(v)); }
+    let g = 0;
+    while (set.size < 4 && g++ < 40) set.add(String(ri(1, 9) * 10));
+    return shuffle(Array.from(set));
+  }
+
+  /* ================= 图形渲染辅助 ================= */
+  // 竖式（右对齐等宽）
+  function vertical(a, b, op) {
+    return '<div class="vcalc">' +
+      '<div class="vrow">' + a + '</div>' +
+      '<div class="vrow"><span class="vop">' + op + '</span>' + b + '</div>' +
+      '<div class="vline"></div></div>';
+  }
+  // 分组实物：几个几
   function groupsHTML(n, per, emoji) {
     let h = '';
     for (let i = 0; i < n; i++) h += '<div class="grp">' + emoji.repeat(per) + '</div>';
     return '<div class="groups">' + h + '</div>';
   }
+  // 方位十字
+  function compassHTML(highlight) {
+    const c = (d) => '<div class="cdir' + (highlight === d ? ' on' : '') + '">' + d + '</div>';
+    return '<div class="compass">' +
+      '<div></div>' + c('北') + '<div></div>' +
+      c('西') + '<div class="cctr">🧭</div>' + c('东') +
+      '<div></div>' + c('南') + '<div></div></div>';
+  }
+  // 人民币
+  function moneyHTML(text) {
+    return '<div class="money">' + text + '</div>';
+  }
 
-  /* ================= 游戏模式（按沪教版二上单元） ================= */
+  /* ================= 游戏模式 ================= */
   const MODES = [
-    /* ---------- 一 复习与提高 ---------- */
-    {
-      id: 'boxes', unit: '一 复习与提高', icon: '🔲', name: '方框里填几', desc: '□ + 27 = 45',
-      gen() {
-        const x = ri(11, 60), b = ri(5, 35);
-        if (rnd(2) === 0) {
-          const c = x + b;
-          return { prompt: '<div class="ask">□ + ' + b + ' = ' + c + '<br>方框里填几？</div>',
-                   options: numOptions(x), ans: String(x) };
-        }
-        const c = x - b > 5 ? x - b : x + b;
-        return { prompt: '<div class="ask">□ − ' + b + ' = ' + c + '<br>方框里填几？</div>',
-                 options: numOptions(c + b), ans: String(c + b) };
-      }
-    },
-    {
-      id: 'clever', unit: '一 复习与提高', icon: '⚡', name: '巧算', desc: '凑整再加减',
-      gen() {
-        const tens = ri(2, 6) * 10, ones = ri(1, 8);
-        if (rnd(2) === 0) {
-          const a = tens + ones, b = ri(1, 4) * 10, ans = a + b;
-          return {
-            prompt: '<div class="ask">' + a + ' + ' + b + ' = ?<br>' +
-                    '<span style="font-size:13px;color:#627d98">先加整十数，再加个位</span></div>',
-            options: numOptions(ans), ans: String(ans)
-          };
-        }
-        // 减法：保证十位有余量，结果不会退化成 1、2 这种琐碎答案
-        const b = ri(1, 3) * 10, a = b + tens + ones, ans = tens + ones;
-        return {
-          prompt: '<div class="ask">' + a + ' − ' + b + ' = ?<br>' +
-                  '<span style="font-size:13px;color:#627d98">先减整十数，个位不变</span></div>',
-          options: numOptions(ans), ans: String(ans)
-        };
-      }
-    },
 
-    /* ---------- 二 乘法、除法（一） ---------- */
+    /* ========== 1. 100以内数的加减法（二） ========== */
     {
-      id: 'mul-meaning', unit: '二 乘法、除法（一）', icon: '✖️', name: '乘法的意义', desc: '几个几 → 乘法算式',
+      id: 'v-add', unit: '1 100以内数的加减法（二）', icon: '➕', name: '两位数加减竖式',
+      desc: '竖式对齐，从个位算起',
       gen() {
-        const g = ri(2, 5), p = ri(2, 6), emoji = pick(EMOJI);
-        const correct = g + ' × ' + p;
-        return {
-          prompt: groupsHTML(g, p, emoji) +
-            '<div class="ask">有 ' + g + ' 份，每份 ' + p + ' 个<br>写成乘法算式是？</div>',
-          options: strOptions(correct, [g + ' + ' + p, g + ' × ' + (p + 1), (g + 1) + ' × ' + p, g + ' + ' + p + ' + 1']),
-          ans: correct
-        };
-      }
-    },
-    {
-      id: 'mul-count', unit: '二 乘法、除法（一）', icon: '🔢', name: '一共多少个', desc: '几个几 → 算总数',
-      gen() {
-        const g = ri(2, 6), p = ri(2, 9), emoji = pick(EMOJI);
-        return {
-          prompt: groupsHTML(g, p, emoji) +
-            '<div class="ask">有 ' + g + ' 份，每份 ' + p + ' 个<br>一共多少个？</div>',
-          options: numOptions(g * p), ans: String(g * p)
-        };
-      }
-    },
-    {
-      id: 'mul-248', unit: '二 乘法、除法（一）', icon: '🎯', name: '乘法口诀（2·4·8·5·10）', desc: '口诀求积',
-      gen() {
-        const a = pick([2, 4, 8, 5, 10]), b = ri(2, 9);
-        return {
-          prompt: '<div class="ask">' + a + ' × ' + b + ' = ?</div>',
-          options: numOptions(a * b), ans: String(a * b)
-        };
-      }
-    },
-    {
-      id: 'mul-rel-248', unit: '二 乘法、除法（一）', icon: '🔗', name: '2、4、8 的关系', desc: '8 就是 2 个 4',
-      gen() {
-        const b = ri(2, 9);
-        // 教材本意：8 的乘法可以由 4 的乘法翻倍得到（8 = 2 个 4）
-        if (rnd(2) === 0) {
-          const ans = 8 * b;
+        const add = rnd(2) === 0;
+        if (add) {
+          const a = ri(11, 60), b = ri(11, 99 - a), ans = a + b;
           return {
-            prompt: '<div class="ask">4 × ' + b + ' = ' + 4 * b + '<br>那么 8 × ' + b + ' = ?</div>' +
-                    '<div style="font-size:13px;color:#627d98;text-align:center">8 是 4 的 2 倍，积也翻倍</div>',
+            prompt: vertical(a, b, '+') +
+              '<div class="ask">列竖式算一算，得多少？<br>' +
+              '<span class="hint">相同数位对齐，从个位加起</span></div>',
             options: numOptions(ans), ans: String(ans)
           };
         }
-        const ans = 4 * b;
+        const a = ri(31, 99), b = ri(11, a - 11), ans = a - b;
         return {
-          prompt: '<div class="ask">8 × ' + b + ' = ' + 8 * b + '<br>那么 4 × ' + b + ' = ?</div>' +
-                  '<div style="font-size:13px;color:#627d98;text-align:center">8 的积是 4 的 2 倍，反过来就减半</div>',
+          prompt: vertical(a, b, '−') +
+            '<div class="ask">列竖式算一算，得多少？<br>' +
+            '<span class="hint">相同数位对齐，从个位减起</span></div>',
           options: numOptions(ans), ans: String(ans)
         };
       }
     },
     {
-      id: 'share', unit: '二 乘法、除法（一）', icon: '🍽️', name: '分一分与除法', desc: '平均分求每份',
+      id: 'v-carry', unit: '1 100以内数的加减法（二）', icon: '🔄', name: '进位与退位',
+      desc: '判断要不要进 / 退位',
       gen() {
-        const per = ri(2, 6), g = ri(2, 5), total = per * g, emoji = pick(EMOJI);
-        let plates = '';
-        for (let i = 0; i < g; i++) plates += '<div class="plate">?</div>';
-        return {
-          prompt: '<div class="groups"><div class="grp">' + emoji.repeat(total) + '</div></div>' +
-            '<div class="ask">把 ' + total + ' 个平均放进 ' + g + ' 个盘子<br>每个盘子放几个？</div>' +
-            '<div class="plates">' + plates + '</div>',
-          options: numOptions(per), ans: String(per)
-        };
-      }
-    },
-    {
-      id: 'div-quot', unit: '二 乘法、除法（一）', icon: '➗', name: '用口诀求商', desc: '24 ÷ 6 = ?',
-      gen() {
-        const b = ri(2, 9), q = ri(2, 9), a = b * q;
-        return {
-          prompt: '<div class="ask">' + a + ' ÷ ' + b + ' = ?<br>' +
-                  '<span style="font-size:13px;color:#627d98">想：' + b + ' 乘几等于 ' + a + '</span></div>',
-          options: numOptions(q), ans: String(q)
-        };
-      }
-    },
-    {
-      id: 'times-as-many', unit: '二 乘法、除法（一）', icon: '📊', name: '倍 / 几倍', desc: '蓝色是红色的几倍',
-      gen() {
-        const base = ri(2, 5), t = ri(2, 4);
-        return {
-          prompt: '<div class="rows">' +
-            '<div class="row-line"><span class="tag">红</span>' + '🔴'.repeat(base) + '</div>' +
-            '<div class="row-line"><span class="tag">蓝</span>' + '🔵'.repeat(base * t) + '</div></div>' +
-            '<div class="ask">蓝色小球的个数是红色的几倍？</div>',
-          options: numOptions(t), ans: String(t)
-        };
-      }
-    },
-    {
-      id: 'div-zero', unit: '二 乘法、除法（一）', icon: '0️⃣', name: '被除数为 0', desc: '0 ÷ 5 = ?',
-      gen() {
-        const b = ri(2, 9);
-        return {
-          prompt: '<div class="ask">0 ÷ ' + b + ' = ?<br>' +
-                  '<span style="font-size:13px;color:#627d98">0 个东西分给 ' + b + ' 个人</span></div>',
-          options: shuffle(['0', '1', String(b), '分不了']), ans: '0'
-        };
-      }
-    },
-
-    /* ---------- 三 统计 ---------- */
-    {
-      id: 'chart', unit: '三 统计', icon: '📈', name: '条形统计图', desc: '读图回答问题',
-      gen() {
-        const items = ['苹果', '香蕉', '橘子', '草莓'];
-        const emo = ['🍎', '🍌', '🍊', '🍓'];
-        let data;
-        // 四个数必须互不相同，否则「哪种最多/最少」会有两个并列答案
-        do { data = items.map(() => ri(2, 9)); } while (new Set(data).size < 4);
-        const mx = Math.max.apply(null, data);
-        let bars = '';
-        for (let i = 0; i < 4; i++) {
-          const h = Math.round(data[i] / mx * 95) + 22;
-          bars += '<div class="bar-wrap"><div class="bar" style="height:' + h + 'px">' + data[i] +
-            '</div><div class="bar-lbl">' + items[i] + '</div></div>';
+        const add = rnd(2) === 0;
+        if (add) {
+          // 构造个位相加 ≥10 的加法
+          const o1 = ri(3, 9), o2 = ri(10 - o1, 9);
+          const t1 = ri(1, 5), t2 = ri(1, 3);
+          const a = t1 * 10 + o1, b = t2 * 10 + o2;
+          const ans = a + b;
+          return {
+            prompt: vertical(a, b, '+') +
+              '<div class="ask">个位 ' + o1 + ' + ' + o2 + ' = ' + (o1 + o2) + '<br>' +
+              '个位满十，要向十位进几？</div>',
+            options: shuffle(['1', '0', '2', '10']), ans: '1'
+          };
         }
-        const chart = '<div class="chart">' + bars + '</div>';
-        const k = pick(['most', 'least', 'sum']);
-        let ask, opts, ans;
-        if (k === 'most') {
-          ask = '哪种水果最多？';
-          ans = items[data.indexOf(mx)];
-          opts = shuffle(items.slice());
-        } else if (k === 'least') {
-          const mn = Math.min.apply(null, data);
-          ask = '哪种水果最少？';
-          ans = items[data.indexOf(mn)];
-          opts = shuffle(items.slice());
-        } else {
-          const s = data.reduce((x, y) => x + y, 0);
-          ask = '四种水果一共有多少个？';
-          ans = String(s);
-          opts = numOptions(s);
+        const o1 = ri(1, 4), o2 = ri(o1 + 2, 9);
+        const t1 = ri(4, 9), t2 = ri(1, 3);
+        const a = t1 * 10 + o1, b = t2 * 10 + o2;
+        return {
+          prompt: vertical(a, b, '−') +
+            '<div class="ask">个位 ' + o1 + ' 不够减 ' + o2 + '<br>' +
+            '要从十位退几当十？</div>',
+          options: shuffle(['1', '0', '2', '10']), ans: '1'
+        };
+      }
+    },
+    {
+      id: 'v-mixed', unit: '1 100以内数的加减法（二）', icon: '🔗', name: '连加、连减与混合',
+      desc: '28 + 34 + 22',
+      gen() {
+        const k = rnd(3);
+        if (k === 0) {
+          const a = ri(11, 35), b = ri(11, 30), c = ri(11, Math.max(12, 95 - a - b));
+          const ans = a + b + c;
+          return {
+            prompt: '<div class="ask">' + a + ' + ' + b + ' + ' + c + ' = ?<br>' +
+              '<span class="hint">可以列一个连加竖式，也可以分两步</span></div>',
+            options: numOptions(ans), ans: String(ans)
+          };
         }
-        return { prompt: chart + '<div class="ask">' + ask + '</div>', options: opts, ans: ans };
-      }
-    },
-
-    /* ---------- 四 乘法、除法 ---------- */
-    {
-      id: 'mul-7369', unit: '四 乘法、除法', icon: '🎲', name: '乘法口诀（7·3·6·9）', desc: '口诀求积',
-      gen() {
-        const a = pick([7, 3, 6, 9]), b = ri(2, 9);
+        if (k === 1) {
+          const a = ri(70, 99), b = ri(11, 25), c = ri(11, a - b - 11);
+          const ans = a - b - c;
+          return {
+            prompt: '<div class="ask">' + a + ' − ' + b + ' − ' + c + ' = ?<br>' +
+              '<span class="hint">从左往右依次减</span></div>',
+            options: numOptions(ans), ans: String(ans)
+          };
+        }
+        const a = ri(30, 60), b = ri(11, 30), c = ri(11, Math.max(12, 99 - a - b));
+        const ans = a + b - c;
         return {
-          prompt: '<div class="ask">' + a + ' × ' + b + ' = ?</div>',
-          options: numOptions(a * b), ans: String(a * b)
+          prompt: '<div class="ask">' + a + ' + ' + b + ' − ' + c + ' = ?<br>' +
+            '<span class="hint">先加后减，按顺序算</span></div>',
+          options: numOptions(ans), ans: String(ans)
         };
       }
     },
     {
-      id: 'div-7369', unit: '四 乘法、除法', icon: '🔀', name: '7·3·6·9 的除法', desc: '口诀求商',
+      id: 'v-check', unit: '1 100以内数的加减法（二）', icon: '✅', name: '加减法的验算',
+      desc: '用减法检验加法',
       gen() {
-        const b = pick([7, 3, 6, 9]), q = ri(2, 9), a = b * q;
+        const a = ri(21, 60), b = ri(11, 99 - a), sum = a + b;
+        const correct = sum + ' − ' + b + ' = ' + a;
         return {
-          prompt: '<div class="ask">' + a + ' ÷ ' + b + ' = ?<br>' +
-                  '<span style="font-size:13px;color:#627d98">想：' + b + ' 乘几等于 ' + a + '</span></div>',
-          options: numOptions(q), ans: String(q)
-        };
-      }
-    },
-    {
-      id: 'div-rem', unit: '四 乘法、除法', icon: '🔘', name: '有余数的除法', desc: '25 ÷ 4 = 6 …… 1',
-      gen() {
-        const b = ri(2, 9), q = ri(2, 9), r = ri(1, b - 1), a = b * q + r;
-        const correct = q + ' …… ' + r;
-        return {
-          prompt: '<div class="ask">' + a + ' ÷ ' + b + ' = ?<br>' +
-                  '<span style="font-size:13px;color:#627d98">商几？余几？（余数要比除数小）</span></div>',
+          prompt: '<div class="ask">小明算：' + a + ' + ' + b + ' = ' + sum + '<br>' +
+            '下面哪个式子可以用来验算？</div>',
           options: strOptions(correct, [
-            (q + 1) + ' …… ' + r, q + ' …… 0', (q + 1) + ' …… ' + (r > 1 ? r - 1 : 0)
+            sum + ' + ' + b + ' = ' + a,
+            a + ' − ' + b + ' = ' + sum,
+            sum + ' + ' + a + ' = ' + b
           ]),
           ans: correct
         };
       }
     },
     {
-      id: 'mul-split', unit: '四 乘法、除法', icon: '✂️', name: '分拆为乘与加', desc: '8×6 = 5×6 + □×6',
+      id: 'v-estimate', unit: '1 100以内数的加减法（二）', icon: '📏', name: '加减法的估算',
+      desc: '估成整十数再算',
       gen() {
-        const a = pick([6, 7, 8, 9]), b = ri(2, 9);
-        const ans = a - 5;
+        const add = rnd(2) === 0;
+        const t1 = ri(2, 6), t2 = ri(2, 3);
+        const o1 = ri(1, 4), o2 = ri(1, 4);
+        const a = t1 * 10 + o1, b = t2 * 10 + o2;
+        if (add) {
+          const ans = (t1 + t2) * 10;
+          return {
+            prompt: '<div class="ask">' + a + ' + ' + b + ' 大约是多少？<br>' +
+              '<span class="hint">' + a + ' 接近 ' + t1 * 10 + '，' + b + ' 接近 ' + t2 * 10 + '</span></div>',
+            options: tensOptions(ans), ans: String(ans)
+          };
+        }
+        const tt1 = ri(5, 9), tt2 = ri(2, 3);
+        const a2 = tt1 * 10 + ri(1, 4), b2 = tt2 * 10 + ri(1, 4);
+        const ans = (tt1 - tt2) * 10;
         return {
-          prompt: '<div class="ask">' + a + ' × ' + b + ' = 5 × ' + b + ' + □ × ' + b +
-                  '<br>方框里填几？</div>',
+          prompt: '<div class="ask">' + a2 + ' − ' + b2 + ' 大约是多少？<br>' +
+            '<span class="hint">都估成整十数再减</span></div>',
+          options: tensOptions(ans), ans: String(ans)
+        };
+      }
+    },
+
+    /* ========== 2. 欢乐购物街 ========== */
+    {
+      id: 'rmb-unit', unit: '2 欢乐购物街', icon: '💰', name: '认识人民币',
+      desc: '元、角、分',
+      gen() {
+        const QS = [
+          { q: '人民币的单位有哪几个？', a: '元、角、分', o: ['元、米、分', '角、分、厘米', '元、角、时'] },
+          { q: '1 元等于多少角？', a: '10 角', o: ['5 角', '100 角', '1 角'] },
+          { q: '1 角等于多少分？', a: '10 分', o: ['5 分', '100 分', '1 分'] },
+          { q: '5 角 + 5 角 = ？', a: '1 元', o: ['10 元', '5 元', '1 角'] },
+          { q: '人民币最大的单位是哪个？', a: '元', o: ['角', '分', '都一样'] },
+          { q: '2 元 5 角 里有几个 5 角？', a: '5 个', o: ['2 个', '4 个', '25 个'] }
+        ];
+        const it = pick(QS);
+        return { prompt: moneyHTML('💴 💰 🪙') + '<div class="ask">' + it.q + '</div>',
+                 options: strOptions(it.a, it.o), ans: it.a };
+      }
+    },
+    {
+      id: 'rmb-conv', unit: '2 欢乐购物街', icon: '🔁', name: '人民币的换算',
+      desc: '1元 = 10角',
+      gen() {
+        const k = rnd(3);
+        if (k === 0) {
+          const y = ri(2, 9), ans = y * 10;
+          return { prompt: '<div class="ask">' + y + ' 元 = ? 角</div>',
+                   options: numOptions(ans), ans: String(ans) };
+        }
+        if (k === 1) {
+          const y = ri(2, 9), ans = y;
+          return { prompt: '<div class="ask">' + (y * 10) + ' 角 = ? 元</div>',
+                   options: numOptions(ans), ans: String(ans) };
+        }
+        const y = ri(1, 5), j = ri(1, 9), ans = y * 10 + j;
+        return { prompt: '<div class="ask">' + y + ' 元 ' + j + ' 角 = ? 角</div>',
+                 options: numOptions(ans), ans: String(ans) };
+      }
+    },
+    {
+      id: 'rmb-pay', unit: '2 欢乐购物街', icon: '🛒', name: '付钱与找零',
+      desc: '付 10 元买 8 元，找回多少',
+      gen() {
+        const price = ri(2, 9);
+        const payOpt = [10, 20, 50].filter((p) => p > price);
+        const pay = pick(payOpt);
+        const ans = pay - price;
+        const items = pick(['🧸', '📚', '✏️', '🍬', '🎁', '⚽']);
+        return {
+          prompt: '<div class="ask">' + items + ' 一个玩具 ' + price + ' 元<br>' +
+            '付了 ' + pay + ' 元，应找回多少元？</div>',
           options: numOptions(ans), ans: String(ans)
         };
       }
     },
 
-    /* ---------- 五 几何小实践 ---------- */
+    /* ========== 3. 表内乘法 ========== */
     {
-      id: 'angle', unit: '五 几何小实践', icon: '📐', name: '角与直角', desc: '辨认锐角 / 直角 / 钝角',
+      id: 'mul-intro', unit: '3 表内乘法', icon: '✖️', name: '乘法的初步认识',
+      desc: '相同加数连加',
       gen() {
-        const t = pick(['acute', 'right', 'obtuse']);
-        const deg = t === 'acute' ? ri(28, 68) : t === 'right' ? 90 : ri(112, 152);
-        const rad = deg * Math.PI / 180, L = 92;
-        const x1 = 32, y1 = 122;
-        const x2 = x1 + L, y2 = y1;
-        const x3 = x1 + L * Math.cos(rad), y3 = y1 - L * Math.sin(rad);
-        const svg = '<svg class="angle" width="176" height="146" viewBox="0 0 176 146">' +
-          '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#0ca678" stroke-width="5" stroke-linecap="round"/>' +
-          '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x3.toFixed(1) + '" y2="' + y3.toFixed(1) + '" stroke="#0ca678" stroke-width="5" stroke-linecap="round"/>' +
-          '<circle cx="' + x1 + '" cy="' + y1 + '" r="4.5" fill="#087f5b"/></svg>';
-        const label = { acute: '锐角', right: '直角', obtuse: '钝角' }[t];
+        const g = ri(3, 6), p = ri(2, 7);
+        const addList = [];
+        for (let i = 0; i < g; i++) addList.push(p);
+        const sumExpr = addList.join(' + ');
+        const correct = g + ' 个 ' + p;
         return {
-          prompt: svg + '<div class="ask">这个角是什么角？</div>',
-          options: shuffle(['锐角', '直角', '钝角']), ans: label
+          prompt: '<div class="addline">' + sumExpr + '</div>' +
+            '<div class="ask">这是几个几相加？</div>',
+          options: strOptions(correct, [
+            (g + 1) + ' 个 ' + p, g + ' 个 ' + (p + 1), (g - 1 > 1 ? g - 1 : g + 2) + ' 个 ' + p
+          ]),
+          ans: correct
         };
       }
     },
     {
-      id: 'solid', unit: '五 几何小实践', icon: '🧊', name: '正方体与长方体', desc: '数面、数棱、认边',
+      id: 'mul-names', unit: '3 表内乘法', icon: '🏷️', name: '算式的读写与名称',
+      desc: '乘数 × 乘数 = 积',
+      gen() {
+        const a = ri(2, 9), b = ri(2, 9), p = a * b;
+        const QS = [
+          { q: a + ' × ' + b + ' = ' + p + ' 中，' + p + ' 叫什么？', a: '积', o: ['乘数', '和', '差'] },
+          { q: a + ' × ' + b + ' = ' + p + ' 中，' + a + ' 叫什么？', a: '乘数', o: ['积', '被乘数', '和'] },
+          { q: '乘法算式中，两个乘数相乘的结果叫？', a: '积', o: ['和', '差', '商'] },
+          { q: a + ' × ' + b + ' = ' + p + ' 读作？', a: a + ' 乘 ' + b + ' 等于 ' + p,
+            o: [a + ' 加 ' + b + ' 等于 ' + p, a + ' 除以 ' + b + ' 等于 ' + p, a + ' 乘 ' + p + ' 等于 ' + b] }
+        ];
+        const it = pick(QS);
+        return { prompt: '<div class="ask">' + it.q + '</div>',
+                 options: strOptions(it.a, it.o), ans: it.a };
+      }
+    },
+    {
+      id: 'mul-26', unit: '3 表内乘法', icon: '🎯', name: '2~6 的乘法口诀',
+      desc: '口诀求积',
+      gen() {
+        const a = ri(2, 6), b = ri(2, 9);
+        return { prompt: '<div class="ask">' + a + ' × ' + b + ' = ?</div>',
+                 options: numOptions(a * b), ans: String(a * b) };
+      }
+    },
+    {
+      id: 'mul-79', unit: '3 表内乘法', icon: '🎲', name: '7~9 的乘法口诀',
+      desc: '口诀求积',
+      gen() {
+        const a = ri(7, 9), b = ri(2, 9);
+        return { prompt: '<div class="ask">' + a + ' × ' + b + ' = ?</div>',
+                 options: numOptions(a * b), ans: String(a * b) };
+      }
+    },
+    {
+      id: 'mul-apply', unit: '3 表内乘法', icon: '📝', name: '用乘法解决实际问题',
+      desc: '每份数 × 份数',
+      gen() {
+        const p = ri(2, 9), g = ri(2, 9);
+        const scene = pick([
+          { item: '🍎', unit: '盘', text: '每盘' }, { item: '📚', unit: '摞', text: '每摞' },
+          { item: '🐟', unit: '缸', text: '每缸' }, { item: '🍪', unit: '盒', text: '每盒' }
+        ]);
+        return {
+          prompt: groupsHTML(Math.min(g, 5), Math.min(p, 6), scene.item) +
+            '<div class="ask">' + scene.text + ' ' + p + ' 个，共 ' + g + ' ' + scene.unit +
+            '<br>一共有多少个？</div>',
+          options: numOptions(p * g), ans: String(p * g)
+        };
+      }
+    },
+    {
+      id: 'mul-addsub', unit: '3 表内乘法', icon: '🧩', name: '乘加、乘减',
+      desc: '先算乘法，再算加减（沪教特有）',
+      gen() {
+        const a = ri(2, 6), b = ri(2, 6), c = ri(1, 9);
+        if (rnd(2) === 0) {
+          const ans = a * b + c;
+          return {
+            prompt: groupsHTML(a, b, '🍎') +
+              '<div class="ask">' + a + ' × ' + b + ' + ' + c + ' = ?<br>' +
+              '<span class="hint">先算乘法，再加</span></div>',
+            options: numOptions(ans), ans: String(ans)
+          };
+        }
+        const base = a * b, c2 = ri(1, Math.max(1, base - 1)), ans = base - c2;
+        return {
+          prompt: groupsHTML(a, b, '🍎') +
+            '<div class="ask">' + a + ' × ' + b + ' − ' + c2 + ' = ?<br>' +
+            '<span class="hint">先算乘法，再减</span></div>',
+          options: numOptions(ans), ans: String(ans)
+        };
+      }
+    },
+
+    /* ========== 4. 我的学校我的家 ========== */
+    {
+      id: 'direction', unit: '4 我的学校我的家', icon: '🧭', name: '认识方向',
+      desc: '东、南、西、北',
       gen() {
         const QS = [
-          { q: '正方体的 6 个面都是什么形状？', a: '正方形', o: ['长方形', '三角形', '圆'] },
-          { q: '长方体有几个面？', a: '6 个', o: ['4 个', '8 个', '12 个'] },
-          { q: '正方体有几条棱？', a: '12 条', o: ['6 条', '8 条', '10 条'] },
-          { q: '正方体有几个顶点？', a: '8 个', o: ['4 个', '6 个', '12 个'] },
-          { q: '正方形的 4 条边有什么关系？', a: '4 条边一样长', o: ['对边一样长', '都不相等', '邻边一样长'] },
-          { q: '长方形有几个直角？', a: '4 个', o: ['1 个', '2 个', '3 个'] },
-          { q: '长方形有几条边？', a: '4 条', o: ['3 条', '5 条', '6 条'] },
-          { q: '正方体和长方体，哪个的 6 个面一样大？', a: '正方体', o: ['长方体', '两个都不是', '两个都是'] }
+          { q: '太阳从哪个方向升起？', a: '东', o: ['西', '南', '北'] },
+          { q: '太阳从哪个方向落下？', a: '西', o: ['东', '南', '北'] },
+          { q: '地图上通常「上」表示哪个方向？', a: '北', o: ['南', '东', '西'] },
+          { q: '面向北，你的背面是哪个方向？', a: '南', o: ['东', '西', '北'] },
+          { q: '面向北，你的右手边是哪个方向？', a: '东', o: ['西', '南', '北'] },
+          { q: '面向北，你的左手边是哪个方向？', a: '西', o: ['东', '南', '北'] },
+          { q: '东和西是什么关系？', a: '相反的方向', o: ['相同的方向', '相邻方向', '没有关系'] }
+        ];
+        const it = pick(QS);
+        return { prompt: compassHTML() + '<div class="ask">' + it.q + '</div>',
+                 options: strOptions(it.a, it.o), ans: it.a };
+      }
+    },
+    {
+      id: 'route', unit: '4 我的学校我的家', icon: '🗺️', name: '路线图与位置',
+      desc: '谁在谁的哪一边',
+      gen() {
+        const d = pick(['东', '南', '西', '北']);
+        const opp = { 东: '西', 南: '北', 西: '东', 北: '南' }[d];
+        const k = rnd(2);
+        if (k === 0) {
+          return {
+            prompt: '<div class="ask">小明从家向东走 3 格到学校<br>学校在小明家的哪个方向？</div>',
+            options: shuffle(['东', '南', '西', '北']), ans: '东'
+          };
+        }
+        return {
+          prompt: '<div class="ask">学校在小明家的' + d + '面<br>小明家在学校的哪个方向？</div>',
+          options: shuffle(['东', '南', '西', '北']), ans: opp
+        };
+      }
+    },
+    {
+      id: 'left-right', unit: '4 我的学校我的家', icon: '👐', name: '左右与相对位置',
+      desc: '面对面时左右相反',
+      gen() {
+        const QS = [
+          { q: '你和同学面对面站着，你举起右手，他看到的在你的哪一边？', a: '他的左边', o: ['他的右边', '他的前面', '同一个方向'] },
+          { q: '你和同伴<b>并排朝同一个方向</b>站，你的左边就是同伴的哪一边？', a: '左边', o: ['右边', '前面', '后面'] },
+          { q: '排队时你从左数第 3 个，从右数第 4 个，这排共有几人？', a: '6 人', o: ['7 人', '5 人', '8 人'] },
+          { q: '和同伴面对面，你的左边对应同伴的？', a: '右边', o: ['左边', '前面', '后面'] }
         ];
         const it = pick(QS);
         return { prompt: '<div class="ask">' + it.q + '</div>',
@@ -344,63 +440,98 @@
       }
     },
 
-    /* ---------- 六 整理与提高 ---------- */
+    /* ========== 5. 分类 ========== */
     {
-      id: 'mul-dist', unit: '六 整理与提高', icon: '🧩', name: '5个3加3个3等于几个3', desc: '乘法意义的合并',
+      id: 'classify', unit: '5 分类', icon: '🗂️', name: '按不同标准分类',
+      desc: '可以按颜色 / 种类分',
       gen() {
-        const base = ri(3, 7), a = ri(2, 4), b = ri(2, 4);
-        const add = rnd(3) !== 0;
-        const ans = add ? a + b : Math.abs(a - b) || 1;
-        const expr = add
-          ? a + ' 个 ' + base + ' 加 ' + b + ' 个 ' + base
-          : Math.max(a, b) + ' 个 ' + base + ' 减 ' + Math.min(a, b) + ' 个 ' + base;
+        const k = rnd(2);
+        if (k === 0) {
+          return {
+            prompt: '<div class="items">🍎 🍌 🍎 🍌 🍎</div>' +
+              '<div class="ask">这些水果按<b>种类</b>分，能分成哪两类？</div>' +
+              '<div class="hint">题目已经把标准定成「种类」了</div>',
+            options: shuffle(['苹果和香蕉', '红色和黄色', '大的和小的', '圆的和弯的']),
+            ans: '苹果和香蕉'
+          };
+        }
         return {
-          prompt: '<div class="ask">' + expr + '<br>等于几个 ' + base + '？' +
-                  '<br><span style="font-size:13px;color:#627d98">把两边的「个数」相加或相减</span></div>',
+          prompt: '<div class="items">🔴 🔵 🔴 🔵 🔵 🔴</div>' +
+            '<div class="ask">这些圆片按颜色分，各有多少个？</div>',
+          options: shuffle(['红 3 个、蓝 3 个', '红 4 个、蓝 2 个', '红 2 个、蓝 4 个', '都是 3 个']),
+          ans: '红 3 个、蓝 3 个'
+        };
+      }
+    },
+    {
+      id: 'stats-table', unit: '5 分类', icon: '📊', name: '整理数据与统计表',
+      desc: '数一数，填统计表',
+      gen() {
+        const names = ['苹果', '香蕉', '橘子'];
+        const emos = ['🍎', '🍌', '🍊'];
+        const counts = [ri(2, 8), ri(2, 8), ri(2, 8)];
+        let line = '';
+        for (let i = 0; i < 3; i++) line += emos[i].repeat(counts[i]) + ' ';
+        let rows = '';
+        for (let i = 0; i < 3; i++) {
+          rows += '<div class="trow"><span>' + emos[i] + ' ' + names[i] + '</span><span>?</span></div>';
+        }
+        const k = rnd(3);
+        if (k < 2) {
+          const idx = k;
+          return {
+            prompt: '<div class="items small">' + line + '</div>' +
+              '<div class="table">' + rows + '</div>' +
+              '<div class="ask">' + names[idx] + ' 有多少个？</div>',
+            options: numOptions(counts[idx]), ans: String(counts[idx])
+          };
+        }
+        const total = counts[0] + counts[1] + counts[2];
+        return {
+          prompt: '<div class="items small">' + line + '</div>' +
+            '<div class="table">' + rows + '</div>' +
+            '<div class="ask">三种水果一共有多少个？</div>',
+          options: numOptions(total), ans: String(total)
+        };
+      }
+    },
+
+    /* ========== 6. 数学广场 ========== */
+    {
+      id: 'combo', unit: '6 数学广场', icon: '🎨', name: '搭配问题',
+      desc: '2 件上衣配 3 条裤子，几种搭法',
+      gen() {
+        const tops = ri(2, 4), bottoms = ri(2, 4);
+        const ans = tops * bottoms;
+        return {
+          prompt: '<div class="items">👕 × ' + tops + '　👖 × ' + bottoms + '</div>' +
+            '<div class="ask">' + tops + ' 件上衣和 ' + bottoms + ' 条裤子<br>' +
+            '一共有多少种不同的搭配？</div>',
           options: numOptions(ans), ans: String(ans)
         };
       }
     },
     {
-      id: 'mul-div-mix', unit: '六 整理与提高', icon: '🔁', name: '乘与除', desc: '乘除互逆',
+      id: 'reasoning', unit: '6 数学广场', icon: '🧠', name: '简单推理',
+      desc: '根据条件推出结论',
       gen() {
-        const b = ri(2, 9), q = ri(2, 9), a = b * q;
-        const useMul = rnd(2) === 0;
-        if (useMul) {
-          return { prompt: '<div class="ask">' + b + ' × ' + q + ' = ?</div>',
-                   options: numOptions(a), ans: String(a) };
-        }
-        return { prompt: '<div class="ask">' + a + ' ÷ ' + b + ' = ?<br>' +
-                 '<span style="font-size:13px;color:#627d98">因为 ' + b + ' × ' + q + ' = ' + a + '</span></div>',
-                 options: numOptions(q), ans: String(q) };
-      }
-    },
-    {
-      id: 'dot-pattern', unit: '六 整理与提高', icon: '🔵', name: '点图与数', desc: '数点找规律',
-      gen() {
-        const n = ri(2, 5);
-        const total = n * n;
-        let rows = '';
-        for (let i = 0; i < n; i++) {
-          let line = '';
-          for (let j = 0; j < n; j++) line += '🔵';
-          rows += '<div class="row-line">' + line + '</div>';
-        }
-        const k = pick(['total', 'side']);
-        if (k === 'total') {
-          return { prompt: '<div class="rows">' + rows + '</div>' +
-                   '<div class="ask">正方形点阵一共有多少个点？</div>',
-                   options: numOptions(total), ans: String(total) };
-        }
-        return { prompt: '<div class="rows">' + rows + '</div>' +
-                 '<div class="ask">每边有几个点？</div>',
-                 options: numOptions(n), ans: String(n) };
+        const QS = [
+          { q: '小明比小红高，小红比小刚高。<br>谁最高？', a: '小明', o: ['小红', '小刚', '一样高'] },
+          { q: '小明比小红高，小红比小刚高。<br>谁最矮？', a: '小刚', o: ['小明', '小红', '一样高'] },
+          { q: '小丽、小刚和小美三人赛跑。<br>小丽不是第一，小刚是第二。<br>谁跑第一？', a: '小美', o: ['小丽', '小刚', '无法确定'] },
+          { q: '小丽、小刚和小美三人赛跑。<br>小美是第一名，小刚是第二名。<br>谁跑最后？', a: '小丽', o: ['小美', '小刚', '无法确定'] },
+          { q: '甲比乙大，乙比丙大。<br>谁最小？', a: '丙', o: ['甲', '乙', '一样大'] },
+          { q: '红球比黄球多，黄球比蓝球多。<br>哪种球最少？', a: '蓝球', o: ['红球', '黄球', '一样多'] }
+        ];
+        const it = pick(QS);
+        return { prompt: '<div class="ask">' + it.q + '</div>',
+                 options: strOptions(it.a, it.o), ans: it.a };
       }
     }
   ];
 
   /* ================= 存储 ================= */
-  const KEY = 'mathplay.g2.v1';
+  const KEY = 'mathplay.g2.v2';   // v2：知识点按沪教五四学制图谱重排
   let DB = { stars: 0, answered: 0, correct: 0, days: {}, modes: {} };
   function load() {
     try {
@@ -437,7 +568,6 @@
   function nextQuestion() {
     if (cur.idx >= ROUND) return finishRound();
     const q = cur.mode.gen();
-    // 兜底：保证 4 个选项且含正确答案
     const opts = q.options.slice();
     if (opts.indexOf(q.ans) < 0) opts.push(q.ans);
     q.options = shuffle(opts);
@@ -458,7 +588,6 @@
     const wrap = $('#answers');
     wrap.innerHTML = '';
     const longest = Math.max.apply(null, q.options.map((o) => String(o).length));
-    // 三选一（如「锐角/直角/钝角」）或长文本选项 → 单列竖排，避免半行空格
     wrap.style.gridTemplateColumns = (q.options.length === 3 || longest > 5) ? '1fr' : 'repeat(2, 1fr)';
     q.options.forEach((v) => {
       const b = document.createElement('button');
@@ -523,7 +652,7 @@
     show('#view-result');
   }
 
-  /* ================= 首页（按单元分组） ================= */
+  /* ================= 首页 ================= */
   function renderHome() {
     const box = $('#unitList');
     box.innerHTML = '';
@@ -533,9 +662,9 @@
       const list = MODES.filter((m) => m.unit === u);
       const block = document.createElement('div');
       block.className = 'unit-block card';
-      let head = '<div class="unit-title"><span class="u-badge">' + u.split(' ')[0] +
-        '</span><span>' + u.split(' ').slice(1).join(' ') + '</span></div>';
-      block.innerHTML = head;
+      const sp = u.indexOf(' ');
+      block.innerHTML = '<div class="unit-title"><span class="u-badge">' + u.slice(0, sp) +
+        '</span><span>' + u.slice(sp + 1) + '</span></div>';
       list.forEach((m) => {
         const b = document.createElement('button');
         b.className = 'mode-btn';
@@ -571,15 +700,13 @@
         ' 题 · 正确率 ' + r + ' · ⭐' + d.stars + '</span></div>';
     }).join('') : '<div class="p-row"><span>还没有练习记录</span><span>—</span></div>');
 
-    // 分知识点强弱
     const rows = MODES.filter((m) => DB.modes[m.id] && DB.modes[m.id].answered >= 5)
       .map((m) => {
         const s = DB.modes[m.id];
-        const r = Math.round(s.correct / s.answered * 100);
-        return { name: m.name, r: r, n: s.answered };
+        return { unit: m.unit.slice(0, 1), name: m.name, r: Math.round(s.correct / s.answered * 100), n: s.answered };
       }).sort((a, b) => a.r - b.r);
     $('#parentModes').innerHTML = '<div class="card-title">知识点掌握（至少 5 题）</div>' +
-      (rows.length ? rows.map((x) => '<div class="day-row"><span class="d">' + x.name +
+      (rows.length ? rows.map((x) => '<div class="day-row"><span class="d">' + x.unit + ' · ' + x.name +
         '</span><span>' + x.r + '% (' + x.n + '题) ' + (x.r >= 85 ? '✅' : x.r >= 60 ? '⚠️' : '❗') +
         '</span></div>').join('') : '<div class="p-row"><span>数据还不够</span><span>—</span></div>');
     show('#view-parent');
