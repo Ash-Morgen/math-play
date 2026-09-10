@@ -496,3 +496,22 @@
 }
 .link-node{fill:var(--g2);stroke:#fff;stroke-width:2}
 .link-line{stroke-width:4}
+
+/* ================= 手机端拖拽关键样式 ================= */
+/* 不设 touch-action:none，触摸会被浏览器当成滚动抢走，拖拽直接失效 */
+.drag-item, .drag-bin, .drag-pool, .link-card, .order-card,
+.place-cell, .seat-slot, .group-box, .gb-items, .maze-cell, .drag-scene{
+  touch-action:none;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+.drag-hint, .drag-prompt{ -webkit-user-select:none; user-select:none; }
+
+/* 点选连线的选中态 */
+.link-card.picked{
+  border-color:var(--g2);background:#e9fbf3;
+  box-shadow:0 0 0 4px #a8e0c8;transform:scale(1.06);
+}
+.link-card .lc-emoji{font-size:26px;line-height:1}
+.link-card .lc-label{font-size:12px;font-weight:800;color:var(--g2-dark);white-space:nowrap}
