@@ -112,6 +112,38 @@ for (const m of MODES) {
         const expect = sorted.slice(0, -1).map((pp, i) => pp.name + ' 比 ' + sorted[i + 1].name + ' 高').join('<br>');
         if (q.prompt.indexOf(expect) < 0) err(m, '线索与唯一解不符');
 
+      } else if (q.type === 'maze') {
+        if (!(q.size >= 3 && q.size <= 8)) err(m, 'size 不合理: ' + q.size);
+        const okPos = (pt) => pt && pt.r >= 0 && pt.r < q.size && pt.c >= 0 && pt.c < q.size;
+        if (!okPos(q.start)) err(m, 'start 越界');
+        if (!okPos(q.goal)) err(m, 'goal 越界');
+        if (q.start.r === q.goal.r && q.start.c === q.goal.c) err(m, '起点就是终点');
+        const dist = Math.abs(q.start.r - q.goal.r) + Math.abs(q.start.c - q.goal.c);
+        if (dist < 2) err(m, '起点离终点太近（' + dist + ' 步）');
+
+      } else if (q.type === 'place') {
+        if (!q.items || q.items.length < 2) err(m, '地点少于 2 个');
+        const DIRS4 = ['\u5317', '\u4e1c', '\u5357', '\u897f'];
+        const used = [];
+        q.items.forEach((it) => {
+          if (!it.emoji || !it.label) err(m, 'place 项字段缺失');
+          if (DIRS4.indexOf(it.dir) < 0) err(m, '方向非法: ' + it.dir);
+          if (used.indexOf(it.dir) >= 0) err(m, '方向重复（两个地点挤同一格）: ' + it.dir);
+          used.push(it.dir);
+        });
+
+      } else if (q.type === 'seat') {
+        if (!q.person || !q.person.name) err(m, 'person 缺失');
+        if (!(q.slots >= 3 && q.slots <= 8)) err(m, 'slots 不合理: ' + q.slots);
+        if (!(q.answer >= 1 && q.answer <= q.slots)) err(m, 'answer 越界: ' + q.answer + '/' + q.slots);
+
+      } else if (q.type === 'group') {
+        if (!(q.boxes >= 2 && q.boxes <= 5)) err(m, 'boxes 不合理: ' + q.boxes);
+        if (!(q.total >= 4 && q.total <= 20)) err(m, 'total 不合理: ' + q.total);
+        if (q.total % q.boxes !== 0) err(m, 'total 不能被 boxes 整除: ' + q.total + '/' + q.boxes);
+        if (q.total / q.boxes < 2) err(m, '每盘只有 ' + (q.total / q.boxes) + ' 个，太简单');
+        if (!q.emoji) err(m, 'emoji 缺失');
+
       } else {
         err(m, '未知拖拽类型: ' + q.type);
       }
