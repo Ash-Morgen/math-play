@@ -165,34 +165,34 @@
       }
     },
     {
-      id: 'v-mixed', unit: '1 100以内数的加减法（二）', icon: '🔗', name: '连加、连减与混合',
-      desc: '28 + 34 + 22',
+      id: 'v-mixed', unit: '1 100以内数的加减法（二）', icon: '🖐', name: '算一算（拖答案）',
+      desc: '连加连减，拖答案进方框', kind: 'drag', round: 6,
       gen() {
         const k = rnd(3);
+        let expr, ans;
         if (k === 0) {
           const a = ri(11, 35), b = ri(11, 30), c = ri(11, Math.max(12, 95 - a - b));
-          const ans = a + b + c;
-          return {
-            prompt: '<div class="ask">' + a + ' + ' + b + ' + ' + c + ' = ?<br>' +
-              '<span class="hint">可以列一个连加竖式，也可以分两步</span></div>',
-            options: numOptions(ans), ans: String(ans)
-          };
-        }
-        if (k === 1) {
+          expr = a + ' + ' + b + ' + ' + c; ans = a + b + c;   // 和 <= 95，控制在 100 以内
+        } else if (k === 1) {
           const a = ri(70, 99), b = ri(11, 25), c = ri(11, a - b - 11);
-          const ans = a - b - c;
-          return {
-            prompt: '<div class="ask">' + a + ' − ' + b + ' − ' + c + ' = ?<br>' +
-              '<span class="hint">从左往右依次减</span></div>',
-            options: numOptions(ans), ans: String(ans)
-          };
+          expr = a + ' \u2212 ' + b + ' \u2212 ' + c; ans = a - b - c;
+        } else {
+          // 关键：c 必须小于 a+b，否则 a+b-c 会算成负数（二年级不学负数）
+          const a = ri(30, 60), b = ri(11, 30);
+          const c = ri(6, Math.max(7, Math.min(a + b - 5, 60)));
+          expr = a + ' + ' + b + ' \u2212 ' + c; ans = a + b - c;
         }
-        const a = ri(30, 60), b = ri(11, 30), c = ri(11, Math.max(12, 99 - a - b));
-        const ans = a + b - c;
+        const set = new Set([ans]);
+        let g = 0;
+        while (set.size < 4 && g++ < 80) {
+          const v = ans + (rnd(2) ? 1 : -1) * ri(1, 9);
+          if (v > 0 && v !== ans) set.add(v);
+        }
         return {
-          prompt: '<div class="ask">' + a + ' + ' + b + ' − ' + c + ' = ?<br>' +
-            '<span class="hint">先加后减，按顺序算</span></div>',
-          options: numOptions(ans), ans: String(ans)
+          kind: 'drag', type: 'eqfill',
+          prompt: '从左往右依次算，拖答案到方框里',
+          expr: expr, ans: ans,
+          digits: shuffle(Array.from(set))
         };
       }
     },
@@ -243,20 +243,36 @@
 
     /* ========== 2. 欢乐购物街 ========== */
     {
-      id: 'rmb-unit', unit: '2 欢乐购物街', icon: '💰', name: '认识人民币',
-      desc: '元、角、分',
+      id: 'rmb-unit', unit: '2 欢乐购物街', icon: '💰', name: '认币分类（拖拽）',
+      desc: '把钱币拖到「元 / 角 / 分」筐里', kind: 'drag', round: 5,
       gen() {
-        const QS = [
-          { q: '人民币的单位有哪几个？', a: '元、角、分', o: ['元、米、分', '角、分、厘米', '元、角、时'] },
-          { q: '1 元等于多少角？', a: '10 角', o: ['5 角', '100 角', '1 角'] },
-          { q: '1 角等于多少分？', a: '10 分', o: ['5 分', '100 分', '1 分'] },
-          { q: '5 角 + 5 角 = ？', a: '1 元', o: ['10 元', '5 元', '1 角'] },
-          { q: '人民币最大的单位是哪个？', a: '元', o: ['角', '分', '都一样'] },
-          { q: '2 元 5 角 里有几个 5 角？', a: '5 个', o: ['2 个', '4 个', '25 个'] }
+        const BINS = [
+          { accept: 'yuan', label: '\u5143' },
+          { accept: 'jiao', label: '\u89d2' },
+          { accept: 'fen', label: '\u5206' }
         ];
-        const it = pick(QS);
-        return { prompt: moneyHTML('💴 💰 🪙') + '<div class="ask">' + it.q + '</div>',
-                 options: strOptions(it.a, it.o), ans: it.a };
+        const POOL = {
+          yuan: ['1 \u5143', '5 \u5143', '10 \u5143', '20 \u5143'],
+          jiao: ['1 \u89d2', '2 \u89d2', '5 \u89d2'],
+          fen: ['1 \u5206', '2 \u5206', '5 \u5206']
+        };
+        const EMO = { yuan: '💴', jiao: '🪙', fen: '\u26AA' };
+        // 每个筐至少放 1 个，总数 4~6 个
+        const items = [];
+        const keys = shuffle(['yuan', 'jiao', 'fen']);
+        keys.forEach(function (k, ki) {
+          const n = ki === 0 ? ri(2, 3) : ri(1, 2);
+          const pool = shuffle(POOL[k].slice()).slice(0, n);
+          pool.forEach(function (lb) {
+            items.push({ emoji: EMO[k], label: lb, group: k });
+          });
+        });
+        return {
+          kind: 'drag', type: 'classify',
+          prompt: '这些钱该放进哪个筐？<br>元、角、分是人民币的三个单位',
+          items: shuffle(items),
+          bins: BINS
+        };
       }
     },
     {
@@ -348,42 +364,41 @@
       match: { rows: 8, cols: 6, factorRange: [2, 9], maxVal: 81, timeSec: 150, targetScore: 320 }
     },
     {
-      id: 'mul-apply', unit: '3 表内乘法', icon: '📝', name: '用乘法解决实际问题',
-      desc: '每份数 × 份数',
+      id: 'mul-apply', unit: '3 表内乘法', icon: '📝', name: '每盘放几个（拖苹果）',
+      desc: '按每盘的数量摆放，再看乘法', kind: 'drag', round: 4,
       gen() {
-        const p = ri(2, 9), g = ri(2, 9);
-        const scene = pick([
-          { item: '🍎', unit: '盘', text: '每盘' }, { item: '📚', unit: '摞', text: '每摞' },
-          { item: '🐟', unit: '缸', text: '每缸' }, { item: '🍪', unit: '盒', text: '每盒' }
-        ]);
+        const per = ri(2, 6), boxes = ri(2, 4);
+        const emoji = pick(['🍎', '🍊', '🍪', '\u2B50']);
         return {
-          prompt: groupsHTML(Math.min(g, 5), Math.min(p, 6), scene.item) +
-            '<div class="ask">' + scene.text + ' ' + p + ' 个，共 ' + g + ' ' + scene.unit +
-            '<br>一共有多少个？</div>',
-          options: numOptions(p * g), ans: String(p * g)
+          kind: 'drag', type: 'fill',
+          prompt: '每盘放 ' + per + ' 个，一共 ' + boxes + ' 盘<br>摆好之后再想想：怎么用乘法算出一共几个？',
+          per: per, boxes: boxes, emoji: emoji
         };
       }
     },
     {
-      id: 'mul-addsub', unit: '3 表内乘法', icon: '🧩', name: '乘加、乘减',
-      desc: '先算乘法，再算加减（沪教特有）',
+      id: 'mul-addsub', unit: '3 表内乘法', icon: '🧩', name: '乘加乘减（拖答案）',
+      desc: '先算乘法，再算加减', kind: 'drag', round: 6,
       gen() {
         const a = ri(2, 6), b = ri(2, 6), c = ri(1, 9);
+        let expr, ans;
         if (rnd(2) === 0) {
-          const ans = a * b + c;
-          return {
-            prompt: groupsHTML(a, b, '🍎') +
-              '<div class="ask">' + a + ' × ' + b + ' + ' + c + ' = ?<br>' +
-              '<span class="hint">先算乘法，再加</span></div>',
-            options: numOptions(ans), ans: String(ans)
-          };
+          expr = a + ' \u00D7 ' + b + ' + ' + c; ans = a * b + c;
+        } else {
+          const base = a * b, d = ri(1, Math.max(1, base - 1));
+          expr = a + ' \u00D7 ' + b + ' \u2212 ' + d; ans = base - d;
         }
-        const base = a * b, c2 = ri(1, Math.max(1, base - 1)), ans = base - c2;
+        const set = new Set([ans]);
+        let g = 0;
+        while (set.size < 4 && g++ < 80) {
+          const v = ans + (rnd(2) ? 1 : -1) * ri(1, 9);
+          if (v > 0 && v !== ans) set.add(v);
+        }
         return {
-          prompt: groupsHTML(a, b, '🍎') +
-            '<div class="ask">' + a + ' × ' + b + ' − ' + c2 + ' = ?<br>' +
-            '<span class="hint">先算乘法，再减</span></div>',
-          options: numOptions(ans), ans: String(ans)
+          kind: 'drag', type: 'eqfill',
+          prompt: '先算乘法，再算加减。拖答案到方框',
+          expr: expr, ans: ans,
+          digits: shuffle(Array.from(set))
         };
       }
     },
