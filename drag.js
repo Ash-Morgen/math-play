@@ -1,13 +1,13 @@
-/* 拖拽引擎 + 拖拽类玩法（操作型，替代「点选项」）
+/* 拖拽引擎 + 操作型玩法
    设计要点：
    - Pointer Events 统一鼠标 / 触屏 / 触控笔
    - 拖动时把元素设成 pointer-events:none，松手用 elementFromPoint 命中落点
    - 松手判定放在 document 级监听，避免元素自身不接收事件
-*/
+   玩法：classify 拖拽分类 / pay 拖钱币付钱 / vfill 竖式填数 / count 点击计数 */
 (function () {
   'use strict';
 
-  const Sfx = () => window.Sfx || { ok: function () { }, bad: function () { }, win: function () { } };
+  const Sfx = () => window.Sfx || { ok: function () { }, bad: function () { }, win: function () { }, tick: function () { } };
 
   function el(tag, cls, html) {
     const d = document.createElement(tag);
@@ -52,6 +52,11 @@
     setTimeout(function () { node.classList.remove('shake'); }, 430);
   }
 
+  function shuffleArr(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+
   /* ================= 玩法 A：分类拖拽 ================= */
   /* q = { prompt, items:[{emoji,group}], bins:[{label,accept}] } */
   function buildClassify(q, root, done) {
@@ -78,17 +83,13 @@
         onDrop: function (node, target) {
           const bin = target && target.closest ? target.closest('.drag-bin') : null;
           if (bin && bin.dataset.accept === node.dataset.group) {
-            // 放对：吸进筐里，锁定不可再拖
             node.dataset.locked = '1';
             node.classList.add('placed');
             bin.querySelector('.bin-items').appendChild(node);
             Sfx().ok();
             remaining--;
-            if (remaining === 0) {
-              setTimeout(function () { done(wrong <= 1); }, 420);
-            }
+            if (remaining === 0) setTimeout(function () { done(wrong <= 1); }, 420);
           } else {
-            // 放错：抖动 + 弹回原位
             shake(node);
             Sfx().bad();
             wrong++;
@@ -105,7 +106,7 @@
   }
 
   /* ================= 玩法 B：拖钱币付钱 ================= */
-  /* q = { prompt, price, coins:[1,2,5,10], item } */
+  /* q = { prompt, price, coins:[1,2,5,10] } */
   function buildPay(q, root, done) {
     const scene = el('div', 'drag-scene');
     scene.appendChild(el('div', 'drag-prompt', q.prompt));
@@ -127,7 +128,7 @@
 
     function refresh() {
       counter.querySelector('.pc-val').textContent = paid;
-      var diff = counter.querySelector('.pc-diff');
+      const diff = counter.querySelector('.pc-diff');
       if (paid < q.price) { diff.textContent = '还差 ' + (q.price - paid) + ' 元'; diff.className = 'pc-diff need'; }
       else if (paid === q.price) { diff.textContent = '刚好！'; diff.className = 'pc-diff exact'; }
       else { diff.textContent = '多付了 ' + (paid - q.price) + ' 元'; diff.className = 'pc-diff over'; }
@@ -137,9 +138,8 @@
         settled = true;
         Sfx().win();
         const change = paid - q.price;
-        const msg = el('div', 'pay-result ' + (change === 0 ? 'good' : 'warn'),
-          change === 0 ? '✅ 刚好付清！' : '✅ 付清了，要找回 ' + change + ' 元');
-        board.appendChild(msg);
+        board.appendChild(el('div', 'pay-result ' + (change === 0 ? 'good' : 'warn'),
+          change === 0 ? '✅ 刚好付清！' : '✅ 付清了，要找回 ' + change + ' 元'));
         setTimeout(function () { done(wrong <= 1); }, 900);
       }
     }
@@ -151,7 +151,6 @@
         onDrop: function (node, target) {
           const bin = target && target.closest ? target.closest('.drag-bin') : null;
           if (bin && bin.dataset.accept === 'money' && !settled) {
-            // 钱币进收银台后「消失」（真实付款），只累计金额
             paid += Number(node.dataset.v);
             const float = el('div', 'coin-fly', '+' + node.dataset.v);
             bin.appendChild(float);
@@ -162,7 +161,7 @@
             refresh();
           } else if (!bin) {
             shake(node);
-            wrong++;   // 没拖到收银台
+            wrong++;
           }
         }
       });
@@ -170,6 +169,219 @@
     });
 
     scene.appendChild(pool);
+    root.appendChild(scene);
+    refresh();
+  }
+
+  /* ================= 玩法 C：竖式填数 ================= */
+  /* q = { prompt, a, b, c, op, hide:'a1'|'a0'|..., ans, digits:[...] } */
+  function buildVfill(q, root, done) {
+    const scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    const calc = el('div', 'vfill-calc');
+
+    // 把一个两位数渲染成数位格；hide 指定的位渲染成空槽（key: 前缀+位序，0=个位）
+    function digitsRow(numStr, prefix) {
+      let h = '';
+      for (let i = 0; i < numStr.length; i++) {
+        const key = prefix + (numStr.length - 1 - i);
+        h += (key === q.hide)
+          ? '<span class="vslot" data-slot="' + key + '"></span>'
+          : '<span class="vdigit">' + numStr[i] + '</span>';
+      }
+      return h;
+    }
+
+    calc.innerHTML =
+      '<div class="vrow">' + digitsRow(String(q.a), 'a') + '</div>' +
+      '<div class="vrow"><span class="vop">' + q.op + '</span>' + digitsRow(String(q.b), 'b') + '</div>' +
+      '<div class="vline"></div>' +
+      '<div class="vrow">' + digitsRow(String(q.c), 'c') + '</div>';
+    scene.appendChild(calc);
+
+    const pool = el('div', 'drag-pool');
+    let solved = false, wrong = 0;
+
+    q.digits.forEach(function (d) {
+      const chip = el('div', 'drag-item chip', String(d));
+      chip.dataset.val = String(d);
+      dragify(chip, {
+        onDrop: function (node, target) {
+          const slot = target && target.closest ? target.closest('.vslot') : null;
+          if (!slot) { shake(node); return; }
+          if (Number(node.dataset.val) === q.ans) {
+            slot.textContent = node.dataset.val;
+            slot.classList.add('filled');
+            node.dataset.locked = '1';
+            node.classList.add('placed');
+            Sfx().ok();
+            if (!solved) { solved = true; setTimeout(function () { done(wrong <= 1); }, 650); }
+          } else {
+            shake(node);
+            Sfx().bad();
+            wrong++;
+          }
+        }
+      });
+      pool.appendChild(chip);
+    });
+
+    scene.appendChild(pool);
+    scene.appendChild(el('div', 'drag-hint', '想一想：这一位应该是几？'));
+    root.appendChild(scene);
+  }
+
+  /* ================= 玩法 D：点击计数 ================= */
+  /* q = { prompt, items:[{emoji}], groups:[{emoji,label}] } */
+  function buildCount(q, root, done) {
+    const scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    const area = el('div', 'count-area');
+    const table = el('div', 'count-table');
+    const tally = {};
+    q.groups.forEach(function (g) { tally[g.emoji] = 0; });
+
+    function renderTable() {
+      table.innerHTML = q.groups.map(function (g) {
+        const n = tally[g.emoji];
+        return '<div class="ctrow"><span class="ctl">' + g.emoji + ' ' + g.label +
+          '</span><span class="ctb">' + (n ? '▮'.repeat(n) : '<i>还没有</i>') +
+          '</span><span class="ctn">' + n + '</span></div>';
+      }).join('');
+    }
+
+    let left = q.items.length;
+    q.items.forEach(function (it) {
+      const d = el('button', 'count-item', it.emoji);
+      d.addEventListener('click', function () {
+        if (d.classList.contains('done')) return;
+        d.classList.add('done');
+        tally[it.emoji]++;
+        left--;
+        Sfx().tick();
+        renderTable();
+        if (left === 0) setTimeout(function () { done(true); }, 650);
+      });
+      area.appendChild(d);
+    });
+
+    scene.appendChild(area);
+    scene.appendChild(el('div', 'drag-hint', '每点一个，下面的数量就加 1'));
+    scene.appendChild(table);
+    renderTable();
+    root.appendChild(scene);
+  }
+
+  /* ================= 玩法 E：搭配连线 ================= */
+  /* q = { prompt, left:[{emoji,label}], right:[{emoji,label}] } */
+  function buildLink(q, root, done) {
+    const scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    const board = el('div', 'link-board');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'link-svg');
+    board.appendChild(svg);
+    const colL = el('div', 'link-col'), colR = el('div', 'link-col');
+
+    const total = q.left.length * q.right.length;
+    let count = 0;
+    const made = {};
+
+    function drawLine(a, b) {
+      const br = board.getBoundingClientRect();
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      ln.setAttribute('x1', ra.right - br.left);
+      ln.setAttribute('y1', ra.top + ra.height / 2 - br.top);
+      ln.setAttribute('x2', rb.left - br.left);
+      ln.setAttribute('y2', rb.top + rb.height / 2 - br.top);
+      ln.setAttribute('class', 'link-line');
+      svg.appendChild(ln);
+    }
+
+    function makeCard(it, side, idx) {
+      const card = el('div', 'link-card', '<span class="lc-emoji">' + it.emoji +
+        '</span><span class="lc-label">' + it.label + '</span>');
+      card.dataset.side = side;
+      card.dataset.idx = String(idx);
+      card.dataset.key = side + idx;
+      dragify(card, {
+        onDrop: function (node, target) {
+          const other = target && target.closest ? target.closest('.link-card') : null;
+          if (!other || other.dataset.side === side) { shake(node); return; }
+          const key = node.dataset.key + '-' + other.dataset.key;
+          if (made[key]) { shake(node); Sfx().bad(); return; }   // 重复连线不计
+          made[key] = 1;
+          count++;
+          drawLine(node, other);
+          const dot = el('span', 'link-dot', '●');
+          other.appendChild(dot);
+          other.classList.add('linked');
+          node.classList.add('linked');
+          Sfx().tick();
+          if (count === total) setTimeout(function () { done(true); }, 600);
+        }
+      });
+      return card;
+    }
+
+    q.left.forEach(function (it, i) { colL.appendChild(makeCard(it, 'L', i)); });
+    q.right.forEach(function (it, i) { colR.appendChild(makeCard(it, 'R', i)); });
+    board.appendChild(colL);
+    board.appendChild(colR);
+    scene.appendChild(board);
+    scene.appendChild(el('div', 'drag-hint', '左边每一件都要和右边连一次，共 ' + total + ' 种搭配'));
+    root.appendChild(scene);
+  }
+
+  /* ================= 玩法 F：拖着排队 ================= */
+  /* q = { prompt, people:[{emoji,name,rank}] }  rank 越大越高，要求从高到矮排 */
+  function buildOrder(q, root, done) {
+    const scene = el('div', 'drag-scene');
+    scene.appendChild(el('div', 'drag-prompt', q.prompt));
+
+    const row = el('div', 'order-row');
+    let arr = shuffleArr(q.people.slice());
+    let finished = false;
+
+    function check() {
+      let ok = true;
+      for (let i = 1; i < arr.length; i++) if (arr[i - 1].rank < arr[i].rank) { ok = false; break; }
+      if (ok && !finished) { finished = true; Sfx().win(); setTimeout(function () { done(true); }, 550); }
+      return ok;
+    }
+
+    function render() {
+      row.innerHTML = '';
+      arr.forEach(function (p) {
+        // 注意：卡片不能有视觉高矮差异，否则孩子不推理、直接看高度就能排
+        const card = el('div', 'order-card',
+          '<span class="oc-emoji">' + p.emoji + '</span><span class="oc-name">' + p.name + '</span>');
+        card.dataset.name = p.name;
+        dragify(card, {
+          onDrop: function (node, target) {
+            if (finished) return;
+            const other = target && target.closest ? target.closest('.order-card') : null;
+            if (!other || other === node) return;
+            const i1 = arr.map(function (x) { return x.name; }).indexOf(node.dataset.name);
+            const i2 = arr.map(function (x) { return x.name; }).indexOf(other.dataset.name);
+            if (i1 < 0 || i2 < 0) return;
+            const t = arr[i1]; arr[i1] = arr[i2]; arr[i2] = t;
+            Sfx().tick();
+            render();
+            check();
+          }
+        });
+        row.appendChild(card);
+      });
+    }
+
+    scene.appendChild(row);
+    scene.appendChild(el('div', 'drag-hint', '拖着卡片互换位置，排好后会自动检查'));
+    render();
     root.appendChild(scene);
   }
 
@@ -179,7 +391,12 @@
       root.innerHTML = '';
       if (q.type === 'classify') buildClassify(q, root, done);
       else if (q.type === 'pay') buildPay(q, root, done);
+      else if (q.type === 'vfill') buildVfill(q, root, done);
+      else if (q.type === 'count') buildCount(q, root, done);
+      else if (q.type === 'link') buildLink(q, root, done);
+      else if (q.type === 'order') buildOrder(q, root, done);
       else root.appendChild(el('div', 'drag-prompt', '（未知拖拽题型）'));
-    }
+    },
+    _shuffle: shuffleArr
   };
 })();
