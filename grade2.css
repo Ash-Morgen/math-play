@@ -515,3 +515,10 @@
 }
 .link-card .lc-emoji{font-size:26px;line-height:1}
 .link-card .lc-label{font-size:12px;font-weight:800;color:var(--g2-dark);white-space:nowrap}
+
+/* 设备自检信息（排查手机端问题用） */
+.env-line{
+  font-size:11px;color:#868e96;text-align:center;line-height:1.6;
+  padding:10px 6px;word-break:break-all;
+}
+.ver-tag{color:#a8e0c8;font-weight:800}
