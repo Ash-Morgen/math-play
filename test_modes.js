@@ -1,20 +1,23 @@
 /* 题目生成器自测
    1) 选择题：每题必须含正确答案、选项不重复、无 NaN
-   2) 拖拽题：结构完整，且「付钱」题的钱币必须能凑出价格（否则玩家卡死）
+   2) 拖拽题：
+      - classify：物体都有对应筐、无死筐
+      - pay：钱币必须能凑出价格（否则玩家卡死）
+      - vfill：隐藏位的正确数字必须等于 ans、竖式必须成立、数字块含答案
+      - count：统计项必须与实际水果种类一致
+   3) 消除题（kind:'match'）：由 test_match.js 覆盖，这里跳过
    用法：node test_modes.js */
 const fs = require('fs');
 const src = fs.readFileSync(__dirname + '/grade2.js', 'utf8');
-
 const a = src.indexOf('const rnd');
 const b = src.indexOf('/* ================= 存储');
 if (a < 0 || b < 0) { console.error('抽取失败'); process.exit(1); }
 const { MODES } = new Function(src.slice(a, b) + '\nreturn { MODES };')();
 
 const N = 300;
-let total = 0, bad = 0, dragCount = 0;
+let total = 0, bad = 0;
 const errors = [];
 
-// 子集和：给定的钱币能否刚好凑出目标（玩家必须能通关）
 function canMake(coins, target) {
   for (let mask = 1; mask < (1 << coins.length); mask++) {
     let s = 0;
@@ -23,44 +26,94 @@ function canMake(coins, target) {
   }
   return false;
 }
+function err(m, msg) { errors.push(`[${m.id}] ${msg}`); bad++; }
 
 for (const m of MODES) {
+  if (m.kind === 'match') continue;                       // 消除玩法另测
   for (let i = 0; i < N; i++) {
     total++;
     let q;
     try { q = m.gen(); }
-    catch (e) { errors.push(`[${m.id}] gen 抛异常: ${e.message}`); bad++; continue; }
+    catch (e) { err(m, 'gen 抛异常: ' + e.message); continue; }
 
     /* ---------- 拖拽题 ---------- */
     if (m.kind === 'drag') {
-      dragCount++;
-      if (q.kind !== 'drag') errors.push(`[${m.id}] 未返回 kind:drag`), bad++;
-      if (!q.prompt) errors.push(`[${m.id}] 缺 prompt`), bad++;
+      if (q.kind !== 'drag') err(m, '未返回 kind:drag');
+      if (!q.prompt) err(m, '缺 prompt');
 
       if (q.type === 'classify') {
-        if (!q.items || !q.items.length) errors.push(`[${m.id}] items 为空`), bad++;
-        if (!q.bins || q.bins.length < 2) errors.push(`[${m.id}] bins 少于 2 个`), bad++;
+        if (!q.items || !q.items.length) err(m, 'items 为空');
+        if (!q.bins || q.bins.length < 2) err(m, 'bins 少于 2 个');
         q.items.forEach((it) => {
-          if (!it.emoji || !it.group) errors.push(`[${m.id}] item 字段缺失`), bad++;
-          if (!q.bins.some((b) => b.accept === it.group))
-            errors.push(`[${m.id}] 物体 group=${it.group} 没有对应筐（无法完成）`), bad++;
+          if (!it.emoji || !it.group) err(m, 'item 字段缺失');
+          if (!q.bins.some((bn) => bn.accept === it.group)) err(m, `物体 group=${it.group} 没有对应筐`);
         });
         q.bins.forEach((bn) => {
-          if (!bn.label || !bn.accept) errors.push(`[${m.id}] bin 字段缺失`), bad++;
+          if (!bn.label || !bn.accept) err(m, 'bin 字段缺失');
+          if (!q.items.some((it) => it.group === bn.accept)) err(m, `筐「${bn.label}」是死筐`);
         });
-        // 每个筐至少要有一个可放进去的物体，否则是死筐
-        q.bins.forEach((bn) => {
-          if (!q.items.some((it) => it.group === bn.accept))
-            errors.push(`[${m.id}] 筐「${bn.label}」没有可放的物体`), bad++;
-        });
+
       } else if (q.type === 'pay') {
-        if (!(q.price > 0)) errors.push(`[${m.id}] price 非法: ${q.price}`), bad++;
-        if (!q.coins || !q.coins.length) errors.push(`[${m.id}] coins 为空`), bad++;
-        if (q.coins.some((c) => !(c > 0))) errors.push(`[${m.id}] 存在非正币值`), bad++;
-        if (!canMake(q.coins, q.price))
-          errors.push(`[${m.id}] price=${q.price} 无法用 [${q.coins.join(',')}] 凑出 → 玩家会卡住`), bad++;
+        if (!(q.price > 0)) err(m, 'price 非法: ' + q.price);
+        if (!q.coins || !q.coins.length) err(m, 'coins 为空');
+        if (q.coins.some((c) => !(c > 0))) err(m, '存在非正币值');
+        if (!canMake(q.coins, q.price)) err(m, `price=${q.price} 无法用 [${q.coins.join(',')}] 凑出`);
+
+      } else if (q.type === 'vfill') {
+        // 竖式必须成立
+        const okMath = q.op === '+' ? (q.a + q.b === q.c) : (q.a - q.b === q.c);
+        if (!okMath) err(m, `竖式不成立: ${q.a} ${q.op} ${q.b} ≠ ${q.c}`);
+        // hide 格式
+        const prefix = q.hide[0], pos = Number(q.hide.slice(1));
+        if ('abc'.indexOf(prefix) < 0 || !(pos >= 0 && pos <= 1)) err(m, 'hide 格式异常: ' + q.hide);
+        // 关键：隐藏位的真实数字必须等于 ans，否则题目无解
+        const s = { a: String(q.a), b: String(q.b), c: String(q.c) }[prefix];
+        const realDigit = Number(s[s.length - 1 - pos]);
+        if (realDigit !== q.ans) err(m, `隐藏位 ${q.hide} 真实是 ${realDigit}，但 ans=${q.ans}`);
+        // 数字块
+        if (q.digits.indexOf(q.ans) < 0) err(m, '数字块不含正确答案');
+        if (new Set(q.digits).size !== q.digits.length) err(m, '数字块有重复');
+        if (q.digits.length < 3) err(m, '数字块少于 3 个');
+
+      } else if (q.type === 'count') {
+        if (!q.items || !q.items.length) err(m, 'items 为空');
+        if (!q.groups || !q.groups.length) err(m, 'groups 为空');
+        const kinds = new Set(q.items.map((it) => it.emoji));
+        q.groups.forEach((g) => {
+          if (!g.emoji || !g.label) err(m, 'group 字段缺失');
+          if (!kinds.has(g.emoji)) err(m, `统计项「${g.label}」没有任何水果`);
+        });
+        if (kinds.size !== q.groups.length) err(m, 'items 种类数与 groups 不一致');
+        if (q.items.length < 6) err(m, '水果太少（' + q.items.length + '）');
+
+      } else if (q.type === 'link') {
+        if (!q.left || q.left.length < 2) err(m, 'left 少于 2 件');
+        if (!q.right || q.right.length < 2) err(m, 'right 少于 2 条');
+        const totalLine = q.left.length * q.right.length;
+        if (totalLine < 2 || totalLine > 9) err(m, '连线数不合理: ' + totalLine);
+        q.left.concat(q.right).forEach((it) => {
+          if (!it.emoji || !it.label) err(m, 'link 项字段缺失');
+        });
+        // 同一侧标签重名会导致玩家无法分辨该连哪条
+        const lt = q.left.map((x) => x.label), rt = q.right.map((x) => x.label);
+        if (new Set(lt).size !== lt.length) err(m, '左侧标签有重复: ' + lt.join(','));
+        if (new Set(rt).size !== rt.length) err(m, '右侧标签有重复: ' + rt.join(','));
+
+      } else if (q.type === 'order') {
+        if (!q.people || q.people.length < 3) err(m, '人少于 3 个');
+        q.people.forEach((p) => {
+          if (!p.name || !p.rank) err(m, 'people 字段缺失');
+        });
+        const ranks = q.people.map((p) => p.rank);
+        // rank 重复 → 有并列，正确答案不唯一，孩子会被判错
+        if (new Set(ranks).size !== ranks.length) err(m, 'rank 有重复 → 答案不唯一: ' + ranks.join(','));
+        // 线索必须恰好对应唯一排序（相邻比较链）
+        const sorted = q.people.slice().sort((x, y) => y.rank - x.rank);
+        const expect = sorted.slice(0, -1).map((pp, i) => pp.name + ' 比 ' + sorted[i + 1].name + ' 高').join('<br>');
+        if (q.prompt.indexOf(expect) < 0) err(m, '线索与唯一解不符');
+
       } else {
-        errors.push(`[${m.id}] 未知拖拽类型: ${q.type}`), bad++;
+        err(m, '未知拖拽类型: ' + q.type);
       }
       continue;
     }
@@ -68,41 +121,43 @@ for (const m of MODES) {
     /* ---------- 选择题 ---------- */
     const opts = (q.options || []).map(String);
     const ans = String(q.ans);
-    if (opts.length < 3 || opts.length > 4) errors.push(`[${m.id}] 选项数 ${opts.length}: ${opts.join(' | ')}`), bad++;
-    if (opts.indexOf(ans) < 0) errors.push(`[${m.id}] 不含正确答案 ans=${ans}，选项=${opts.join(' | ')}`), bad++;
-    if (new Set(opts).size !== opts.length) errors.push(`[${m.id}] 选项有重复: ${opts.join(' | ')}`), bad++;
-    if (/undefined|NaN|"null"/.test(JSON.stringify(q))) errors.push(`[${m.id}] 含非法值`), bad++;
-    if (!q.prompt || q.prompt.length < 5) errors.push(`[${m.id}] prompt 异常`), bad++;
+    if (opts.length < 3 || opts.length > 4) err(m, `选项数 ${opts.length}: ${opts.join(' | ')}`);
+    if (opts.indexOf(ans) < 0) err(m, `不含正确答案 ans=${ans}，选项=${opts.join(' | ')}`);
+    if (new Set(opts).size !== opts.length) err(m, '选项有重复: ' + opts.join(' | '));
+    if (/undefined|NaN|"null"/.test(JSON.stringify(q))) err(m, '含非法值');
+    if (!q.prompt || q.prompt.length < 5) err(m, 'prompt 异常');
   }
 }
 
-const choiceCount = MODES.length - MODES.filter((m) => m.kind === 'drag').length;
-console.log(`模式数: ${MODES.length}（选择题 ${choiceCount} · 拖拽题 ${MODES.filter((m) => m.kind === 'drag').length}）`);
-console.log(`样本: ${total} 题`);
+const nChoice = MODES.filter((m) => !m.kind).length;
+const nDrag = MODES.filter((m) => m.kind === 'drag').length;
+const nMatch = MODES.filter((m) => m.kind === 'match').length;
+console.log(`模式数: ${MODES.length}（选择 ${nChoice} · 拖拽 ${nDrag} · 消除 ${nMatch}）`);
+console.log(`抽查样本: ${total} 题`);
 if (bad) {
-  console.log(`\n❌ ${bad} 处问题（去重展示前 12 条）：`);
+  console.log(`\n❌ ${bad} 处问题（去重前 12 条）：`);
   [...new Set(errors)].slice(0, 12).forEach((e) => console.log('  ' + e));
   process.exit(1);
 } else {
   console.log('\n✅ 全部通过');
 }
 
-console.log('\n--- 各模式样题 ---');
-for (const m of MODES) {
+console.log('\n--- 新增拖拽题样题 ---');
+for (const m of MODES.filter((x) => x.kind === 'drag' && ['vfill', 'count'].indexOf(x.gen().type) >= 0).slice(0, 6)) {
   const q = m.gen();
-  console.log(`${m.unit} | ${m.name}${m.kind === 'drag' ? '  【拖拽】' : ''}`);
-  if (m.kind === 'drag') {
-    console.log(`   ${q.prompt.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)}`);
-    if (q.type === 'classify') {
-      console.log(`   物体: ${q.items.map((i) => i.emoji).join(' ')}`);
-      console.log(`   筐: ${q.bins.map((b) => b.label).join(' / ')}`);
-    } else {
-      console.log(`   价格: ${q.price} 元　钱币: ${q.coins.join(' / ')} 元`);
-      console.log(`   可凑出价格: ${canMake(q.coins, q.price) ? '是' : '否 ❌'}`);
-    }
+  console.log(`${m.name}`);
+  if (q.type === 'vfill') {
+    const fmt = (v, p) => String(v).split('').map((ch, i) => {
+      const key = p + (String(v).length - 1 - i);
+      return key === q.hide ? '[?]' : ch;
+    }).join('');
+    console.log(`   ${fmt(q.a, 'a')}`);
+    console.log(`   ${q.op} ${fmt(q.b, 'b')}`);
+    console.log(`   -----`);
+    console.log(`   ${fmt(q.c, 'c')}     数字块: ${q.digits.join(' ')}  答案: ${q.ans}`);
   } else {
-    const plain = q.prompt.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 56);
-    console.log(`   ${plain}`);
-    console.log(`   选项: ${q.options.join(' / ')}   答案: ${q.ans}`);
+    console.log(`   ${q.prompt}`);
+    console.log(`   水果: ${q.items.map((i) => i.emoji).join('')}`);
+    console.log(`   统计项: ${q.groups.map((g) => g.label).join(' / ')}`);
   }
 }
