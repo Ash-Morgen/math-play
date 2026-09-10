@@ -1,0 +1,199 @@
+/* 数学岛 — 响应式 + 童趣皮肤 */
+:root{
+  --bg:#f5f7ff;
+  --card:#ffffff;
+  --ink:#243b53;
+  --ink-soft:#627d98;
+  --blue:#4c6ef5;
+  --blue-dark:#3b5bdb;
+  --green:#2fb344;
+  --red:#ef5350;
+  --amber:#ffb020;
+  --radius:20px;
+  --shadow:0 6px 24px rgba(36,59,83,.10);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  overscroll-behavior:none;
+  user-select:none;
+}
+#app{
+  max-width:640px;
+  margin:0 auto;
+  min-height:100%;
+  padding:18px 16px calc(18px + var(--safe-b));
+  display:flex;
+  flex-direction:column;
+}
+.view{display:none;flex:1;flex-direction:column}
+.view.active{display:flex;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- 首页 ---------- */
+.hero{text-align:center;padding:22px 0 18px}
+.hero.small{padding:8px 0 14px}
+.logo{font-size:52px;line-height:1}
+.hero h1{margin:8px 0 4px;font-size:28px;letter-spacing:1px}
+.hero .sub{margin:0;color:var(--ink-soft);font-size:14px}
+
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:16px;
+  margin-bottom:14px;
+}
+.card-title{margin:0 0 12px;font-size:15px;color:var(--ink-soft);font-weight:600}
+
+.level-list{display:flex;flex-direction:column;gap:10px}
+.level-btn{
+  display:flex;align-items:center;gap:12px;
+  width:100%;padding:14px 16px;
+  border:2px solid #e6ebff;border-radius:16px;
+  background:#fbfcff;cursor:pointer;
+  font-size:16px;font-weight:600;color:var(--ink);
+  transition:transform .12s ease,border-color .12s,background .12s;
+  text-align:left;
+}
+.level-btn:active{transform:scale(.975)}
+.level-btn:hover{border-color:var(--blue);background:#f2f5ff}
+.level-btn .lv-emoji{font-size:26px}
+.level-btn .lv-meta{display:flex;flex-direction:column;gap:2px}
+.level-btn .lv-desc{font-size:12px;color:var(--ink-soft);font-weight:400}
+
+.stats-card{display:flex;justify-content:space-around;text-align:center}
+.stat{display:flex;flex-direction:column;gap:3px;flex:1}
+.stat-num{font-size:22px;font-weight:700;color:var(--blue)}
+.stat-lbl{font-size:12px;color:var(--ink-soft)}
+
+/* ---------- 按钮 ---------- */
+.btn{
+  display:block;width:100%;padding:15px;
+  border:none;border-radius:16px;
+  font-size:17px;font-weight:700;font-family:inherit;
+  cursor:pointer;transition:transform .1s,filter .15s;
+}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 4px 14px rgba(76,110,245,.35)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-ghost{background:transparent;color:var(--ink-soft);font-weight:600;font-size:15px;padding:12px}
+.btn-ghost:hover{color:var(--blue)}
+.btn-danger{background:transparent;color:var(--red);font-weight:600;font-size:14px;padding:10px}
+
+/* ---------- 答题 ---------- */
+.quiz-bar{display:flex;align-items:center;gap:12px;padding:4px 0 12px}
+.icon-btn{
+  width:38px;height:38px;flex:0 0 38px;
+  border:none;border-radius:50%;background:#e8ecff;color:var(--ink-soft);
+  font-size:17px;cursor:pointer;line-height:1;
+}
+.progress-wrap{flex:1;height:10px;background:#e8ecff;border-radius:99px;overflow:hidden}
+.progress{height:100%;width:0;background:linear-gradient(90deg,var(--blue),#7c9cff);border-radius:99px;transition:width .3s ease}
+.star-counter{font-size:15px;font-weight:700;color:var(--amber);white-space:nowrap}
+
+.quiz-body{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;min-height:0;
+}
+.stage-tag{
+  font-size:12px;font-weight:700;letter-spacing:.5px;
+  color:var(--blue);background:#eaefff;padding:5px 14px;border-radius:99px;
+}
+.question{
+  font-size:clamp(26px,7vw,40px);
+  font-weight:800;text-align:center;line-height:1.35;
+  word-break:break-word;
+}
+/* 具象：实物图形 */
+.objects{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:100%}
+.objects.big{font-size:clamp(22px,6vw,34px);line-height:1.1}
+.objects.gone{opacity:.28}
+.obj-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+.op-sign{font-size:34px;font-weight:800;color:var(--ink-soft)}
+/* 形象：点阵 */
+.dots{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:240px}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--blue)}
+.dot.b{background:var(--amber)}
+.dot.off{background:#dde3f5}
+.eq-line{font-size:clamp(24px,6.5vw,36px);font-weight:800}
+.blank{
+  display:inline-block;min-width:1.6em;border-bottom:5px solid var(--blue);
+  color:var(--blue);
+}
+
+.answers{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+  padding-top:14px;
+}
+.ans-btn{
+  padding:20px 8px;border:3px solid #e6ebff;border-radius:18px;
+  background:#fff;font-size:26px;font-weight:800;color:var(--ink);
+  font-family:inherit;cursor:pointer;
+  transition:transform .1s,border-color .15s,background .15s;
+  box-shadow:0 3px 10px rgba(36,59,83,.06);
+}
+.ans-btn:active{transform:scale(.96)}
+.ans-btn:hover{border-color:var(--blue)}
+.ans-btn.correct{border-color:var(--green);background:#e9f9ec;color:var(--green);animation:pop .3s}
+.ans-btn.wrong{border-color:var(--red);background:#fdecec;color:var(--red);animation:shake .3s}
+.ans-btn:disabled{cursor:default;opacity:.85}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+
+.feedback{
+  height:26px;text-align:center;font-weight:700;font-size:16px;
+  padding-top:8px;color:var(--green);
+}
+.feedback.bad{color:var(--red)}
+
+/* 连击 */
+.combo{
+  position:fixed;left:50%;top:22%;transform:translateX(-50%);
+  font-size:34px;font-weight:900;color:var(--amber);
+  text-shadow:0 3px 0 #fff,0 0 18px rgba(255,176,32,.5);
+  pointer-events:none;animation:comboAnim .9s ease forwards;z-index:50;
+}
+@keyframes comboAnim{0%{opacity:0;transform:translate(-50%,10px) scale(.6)}
+  30%{opacity:1;transform:translate(-50%,0) scale(1.15)}
+  100%{opacity:0;transform:translate(-50%,-38px) scale(1)}}
+
+/* ---------- 结算 ---------- */
+#view-result{align-items:center;justify-content:center}
+.result-card{text-align:center;width:100%;padding:8px 0 20px}
+.result-emoji{font-size:64px;animation:pop .5s}
+.result-card h2{font-size:24px;margin:10px 0 6px}
+.result-stars{font-size:32px;letter-spacing:4px;margin:6px 0 10px}
+.result-sub{color:var(--ink-soft);font-size:15px;margin:0 0 22px}
+.result-card .btn{margin-bottom:10px}
+
+/* ---------- 家长报告 ---------- */
+#view-parent .card{font-size:15px}
+.p-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eef1fa}
+.p-row:last-child{border-bottom:none}
+.p-row span:last-child{font-weight:700;color:var(--blue)}
+.day-row{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;border-bottom:1px solid #f2f4fb}
+.day-row:last-child{border-bottom:none}
+.day-row .d{color:var(--ink-soft)}
+
+/* ---------- 大屏（电脑/平板横屏） ---------- */
+@media (min-width:768px){
+  #app{max-width:720px;padding-top:28px}
+  .logo{font-size:60px}
+  .hero h1{font-size:32px}
+  .answers{grid-template-columns:repeat(4,1fr)}
+  .ans-btn{padding:24px 8px;font-size:30px}
+  .card{padding:22px}
+}
+/* 横屏矮屏 */
+@media (max-height:520px) and (orientation:landscape){
+  .hero{padding:6px 0}
+  .logo{display:none}
+  .quiz-body{gap:8px}
+  .stage-tag{display:none}
+}

@@ -1,0 +1,15 @@
+# 依赖与系统文件
+node_modules/
+__pycache__/
+*.pyc
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志与临时文件
+*.log
+tmp_*

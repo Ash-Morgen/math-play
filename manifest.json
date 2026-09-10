@@ -1,0 +1,26 @@
+{
+  "name": "数学岛 · 数感训练",
+  "short_name": "数学岛",
+  "description": "每天 10 分钟，玩出好数感。CPA 教学法 + 游戏化练习。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f7ff",
+  "theme_color": "#4c6ef5",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

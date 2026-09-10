@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#4c6ef5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="数学岛">
+<title>数学岛 · 数感训练</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ========== 首页 ========== -->
+  <section id="view-home" class="view active">
+    <header class="hero">
+      <div class="logo">🏝️</div>
+      <h1>数学岛</h1>
+      <p class="sub">每天 10 分钟，玩出好数感</p>
+    </header>
+
+    <div class="card">
+      <h2 class="card-title">选一个难度</h2>
+      <div class="level-list" id="levelList"><!-- JS 注入 --></div>
+    </div>
+
+    <div class="card stats-card">
+      <div class="stat"><span class="stat-num" id="homeStars">0</span><span class="stat-lbl">总星星</span></div>
+      <div class="stat"><span class="stat-num" id="homeDays">0</span><span class="stat-lbl">练习天数</span></div>
+      <div class="stat"><span class="stat-num" id="homeAcc">—</span><span class="stat-lbl">正确率</span></div>
+    </div>
+
+    <button class="btn btn-ghost" id="btnParent">家长报告</button>
+  </section>
+
+  <!-- ========== 答题 ========== -->
+  <section id="view-quiz" class="view">
+    <header class="quiz-bar">
+      <button class="icon-btn" id="btnQuit" aria-label="退出">✕</button>
+      <div class="progress-wrap"><div class="progress" id="progress"></div></div>
+      <div class="star-counter">⭐ <span id="quizStars">0</span></div>
+    </header>
+
+    <div class="quiz-body">
+      <div class="stage-tag" id="stageTag">数一数</div>
+      <div class="question" id="question"><!-- 题目区 --></div>
+    </div>
+
+    <div class="answers" id="answers"><!-- 选项 --></div>
+    <div class="feedback" id="feedback"></div>
+  </section>
+
+  <!-- ========== 结算 ========== -->
+  <section id="view-result" class="view">
+    <div class="result-card">
+      <div class="result-emoji" id="resultEmoji">🎉</div>
+      <h2 id="resultTitle">真棒！</h2>
+      <div class="result-stars" id="resultStars">⭐⭐⭐</div>
+      <p class="result-sub" id="resultSub"></p>
+      <button class="btn btn-primary" id="btnAgain">再来一轮</button>
+      <button class="btn btn-ghost" id="btnBackHome">回到首页</button>
+    </div>
+  </section>
+
+  <!-- ========== 家长报告 ========== -->
+  <section id="view-parent" class="view">
+    <header class="hero small">
+      <h1>家长报告</h1>
+    </header>
+    <div class="card" id="parentStats"></div>
+    <div class="card" id="parentDaily"></div>
+    <button class="btn btn-ghost" id="btnParentBack">返回</button>
+    <button class="btn btn-danger" id="btnReset">清空记录</button>
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

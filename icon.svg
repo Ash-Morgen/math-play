@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#4c6ef5"/>
+  <circle cx="256" cy="212" r="118" fill="#ffd43b"/>
+  <circle cx="215" cy="196" r="15" fill="#243b53"/>
+  <circle cx="297" cy="196" r="15" fill="#243b53"/>
+  <path d="M206 250 q50 46 100 0" stroke="#243b53" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <path d="M0 372 q128 -46 256 0 t256 0 v140 H0 z" fill="#f5f7ff"/>
+  <path d="M120 400 h272" stroke="#4c6ef5" stroke-width="0" fill="none"/>
+  <text x="256" y="462" font-family="system-ui,sans-serif" font-size="72" font-weight="800"
+        fill="#4c6ef5" text-anchor="middle">1+1</text>
+</svg>
