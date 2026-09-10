@@ -107,25 +107,31 @@
 
     /* ========== 1. 100以内数的加减法（二） ========== */
     {
-      id: 'v-add', unit: '1 100以内数的加减法（二）', icon: '➕', name: '两位数加减竖式',
-      desc: '竖式对齐，从个位算起',
+      id: 'v-add', unit: '1 100以内数的加减法（二）', icon: '🖐️', name: '竖式填数（动手版）',
+      desc: '拖数字填进方框里', kind: 'drag', round: 6,
       gen() {
         const add = rnd(2) === 0;
-        if (add) {
-          const a = ri(11, 60), b = ri(11, 99 - a), ans = a + b;
-          return {
-            prompt: vertical(a, b, '+') +
-              '<div class="ask">列竖式算一算，得多少？<br>' +
-              '<span class="hint">相同数位对齐，从个位加起</span></div>',
-            options: numOptions(ans), ans: String(ans)
-          };
-        }
-        const a = ri(31, 99), b = ri(11, a - 11), ans = a - b;
+        let a, b, c;
+        if (add) { a = ri(12, 58); b = ri(11, 99 - a); c = a + b; }
+        else { a = ri(31, 99); b = ri(11, a - 11); c = a - b; }
+        // 候选隐藏位：a / b / c 的十位或个位（key 用「前缀+位序」，0=个位）
+        const cands = [];
+        [[a, 'a'], [b, 'b'], [c, 'c']].forEach(function (pair) {
+          const s = String(pair[0]);
+          for (let i = 0; i < s.length; i++) {
+            cands.push({ key: pair[1] + (s.length - 1 - i), ans: Number(s[i]) });
+          }
+        });
+        const h = pick(cands);
+        const set = new Set([h.ans]);
+        let guard = 0;
+        while (set.size < 4 && guard++ < 60) set.add(ri(0, 9));
         return {
-          prompt: vertical(a, b, '−') +
-            '<div class="ask">列竖式算一算，得多少？<br>' +
-            '<span class="hint">相同数位对齐，从个位减起</span></div>',
-          options: numOptions(ans), ans: String(ans)
+          kind: 'drag', type: 'vfill',
+          prompt: '把数字拖到方框里，让竖式成立',
+          a: a, b: b, c: c, op: add ? '+' : '−',
+          hide: h.key, ans: h.ans,
+          digits: shuffle(Array.from(set))
         };
       }
     },
@@ -481,34 +487,24 @@
       }
     },
     {
-      id: 'stats-table', unit: '5 分类', icon: '📊', name: '整理数据与统计表',
-      desc: '数一数，填统计表',
+      id: 'stats-table', unit: '5 分类', icon: '👆', name: '点一点，数一数',
+      desc: '点水果计数，统计表自己长出来', kind: 'drag', round: 5,
       gen() {
-        const names = ['苹果', '香蕉', '橘子'];
-        const emos = ['🍎', '🍌', '🍊'];
-        const counts = [ri(2, 8), ri(2, 8), ri(2, 8)];
-        let line = '';
-        for (let i = 0; i < 3; i++) line += emos[i].repeat(counts[i]) + ' ';
-        let rows = '';
-        for (let i = 0; i < 3; i++) {
-          rows += '<div class="trow"><span>' + emos[i] + ' ' + names[i] + '</span><span>?</span></div>';
-        }
-        const k = rnd(3);
-        if (k < 2) {
-          const idx = k;
-          return {
-            prompt: '<div class="items small">' + line + '</div>' +
-              '<div class="table">' + rows + '</div>' +
-              '<div class="ask">' + names[idx] + ' 有多少个？</div>',
-            options: numOptions(counts[idx]), ans: String(counts[idx])
-          };
-        }
-        const total = counts[0] + counts[1] + counts[2];
+        const all = [
+          { emoji: '🍎', label: '苹果' }, { emoji: '🍌', label: '香蕉' },
+          { emoji: '🍊', label: '橘子' }, { emoji: '🍇', label: '葡萄' }
+        ];
+        const use = shuffle(all.slice()).slice(0, ri(2, 3));
+        const items = [];
+        use.forEach(function (g) {
+          const k = ri(3, 7);
+          for (let i = 0; i < k; i++) items.push({ emoji: g.emoji, group: g.label });
+        });
         return {
-          prompt: '<div class="items small">' + line + '</div>' +
-            '<div class="table">' + rows + '</div>' +
-            '<div class="ask">三种水果一共有多少个？</div>',
-          options: numOptions(total), ans: String(total)
+          kind: 'drag', type: 'count',
+          prompt: '点一下每个水果，数数各有多少个（共 ' + items.length + ' 个）',
+          items: shuffle(items),
+          groups: use
         };
       }
     },
@@ -539,34 +535,45 @@
 
     /* ========== 6. 数学广场 ========== */
     {
-      id: 'combo', unit: '6 数学广场', icon: '🎨', name: '搭配问题',
-      desc: '2 件上衣配 3 条裤子，几种搭法',
+      id: 'combo', unit: '6 数学广场', icon: '🔗', name: '搭配连线',
+      desc: '把每一种搭配都连出来', kind: 'drag', round: 5,
       gen() {
-        const tops = ri(2, 4), bottoms = ri(2, 4);
-        const ans = tops * bottoms;
+        const topPool = [
+          { emoji: '👕', label: 'T恤' }, { emoji: '👔', label: '衬衫' },
+          { emoji: '🧥', label: '外套' }
+        ];
+        const botPool = [{ emoji: '👖', label: '长裤' }, { emoji: '🩳', label: '短裤' }];
+        const left = shuffle(topPool.slice()).slice(0, ri(2, 3));
+        const right = shuffle(botPool.slice());
         return {
-          prompt: '<div class="items">👕 × ' + tops + '　👖 × ' + bottoms + '</div>' +
-            '<div class="ask">' + tops + ' 件上衣和 ' + bottoms + ' 条裤子<br>' +
-            '一共有多少种不同的搭配？</div>',
-          options: numOptions(ans), ans: String(ans)
+          kind: 'drag', type: 'link',
+          prompt: '有 ' + left.length + ' 件上衣、' + right.length + ' 条下装<br>每一种搭配都连一次（共 ' +
+            left.length * right.length + ' 种）',
+          left: left, right: right
         };
       }
     },
     {
-      id: 'reasoning', unit: '6 数学广场', icon: '🧠', name: '简单推理',
-      desc: '根据条件推出结论',
+      id: 'reasoning', unit: '6 数学广场', icon: '🖐', name: '排一排（推理）',
+      desc: '按线索把人从高到矮排好', kind: 'drag', round: 5,
       gen() {
-        const QS = [
-          { q: '小明比小红高，小红比小刚高。<br>谁最高？', a: '小明', o: ['小红', '小刚', '一样高'] },
-          { q: '小明比小红高，小红比小刚高。<br>谁最矮？', a: '小刚', o: ['小明', '小红', '一样高'] },
-          { q: '小丽、小刚和小美三人赛跑。<br>小丽不是第一，小刚是第二。<br>谁跑第一？', a: '小美', o: ['小丽', '小刚', '无法确定'] },
-          { q: '小丽、小刚和小美三人赛跑。<br>小美是第一名，小刚是第二名。<br>谁跑最后？', a: '小丽', o: ['小美', '小刚', '无法确定'] },
-          { q: '甲比乙大，乙比丙大。<br>谁最小？', a: '丙', o: ['甲', '乙', '一样大'] },
-          { q: '红球比黄球多，黄球比蓝球多。<br>哪种球最少？', a: '蓝球', o: ['红球', '黄球', '一样多'] }
+        const pool = [
+          { emoji: '🧒', name: '小明' }, { emoji: '👦', name: '小刚' },
+          { emoji: '👧', name: '小红' }, { emoji: '👶', name: '小丽' }
         ];
-        const it = pick(QS);
-        return { prompt: '<div class="ask">' + it.q + '</div>',
-                 options: strOptions(it.a, it.o), ans: it.a };
+        const people = shuffle(pool.slice()).slice(0, 3);
+        const ranks = shuffle([1, 2, 3]);
+        people.forEach(function (p, i) { p.rank = ranks[i]; });
+        const sorted = people.slice().sort(function (x, y) { return y.rank - x.rank; });
+        const clues = [];
+        for (let i = 0; i < sorted.length - 1; i++) {
+          clues.push(sorted[i].name + ' 比 ' + sorted[i + 1].name + ' 高');
+        }
+        return {
+          kind: 'drag', type: 'order',
+          prompt: clues.join('<br>') + '<br><span class="hint">把他们从高到矮排成一排</span>',
+          people: people
+        };
       }
     }
   ];
@@ -835,7 +842,10 @@
 
   /* ================= 启动 ================= */
   // 供 drag.js 调用音效
-  window.Sfx = { ok: sfxOk, bad: sfxBad, win: sfxWin, combo: sfxCombo };
+  window.Sfx = {
+    ok: sfxOk, bad: sfxBad, win: sfxWin, combo: sfxCombo,
+    tick: function () { tone(880, 0, 0.06, 'sine', 0.05); }
+  };
   load();
   renderHome();
 })();
