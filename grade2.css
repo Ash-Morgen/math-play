@@ -485,18 +485,19 @@ body{
 .vfill-calc .vrow{display:flex;justify-content:flex-end;align-items:center;gap:7px}
 .vdigit{min-width:.72em;text-align:center;color:var(--ink)}
 .vslot{
-  width:1.02em;height:1.16em;border:2px dashed var(--g2);border-radius:7px;
+  width:1.22em;height:1.32em;border:2px dashed var(--g2);border-radius:8px;
   background:#f2fbf7;display:inline-block;
 }
 .vslot.filled{
   border-style:solid;background:#e9fbf3;color:var(--g2-dark);
   display:inline-flex;align-items:center;justify-content:center;
-  animation:pop .3s ease;width:auto;min-width:1.02em;padding:0 .08em;
+  animation:pop .3s ease;width:auto;min-width:1.22em;padding:0 .1em;
 }
 .drag-item.chip{
   font-size:clamp(19px,5vw,26px);font-weight:900;color:var(--g2-dark);
   background:#f2fbf7;border-color:#a8e0c8;
-  width:clamp(42px,11vw,52px);height:clamp(42px,11vw,52px);
+  width:clamp(48px,13vw,62px);height:clamp(48px,13vw,62px);
+  padding:0 4px;
 }
 
 /* ================= 点击计数 ================= */
@@ -653,9 +654,10 @@ body{
 .eq-text{white-space:nowrap;letter-spacing:1px}
 .eq-eq{color:var(--g2)}
 .vslot.big{
-  width:1.6em;height:1.3em;border-width:3px;border-radius:10px;
+  min-width:2.7em;height:1.5em;border-width:3px;border-radius:11px;
+  padding:0 .14em;box-sizing:border-box;
 }
-.vslot.big.filled{font-size:.95em}
+.vslot.big.filled{font-size:1em;letter-spacing:1px}
 
 /* 带文字标签的拖拽物体（如各种钱币） */
 .drag-item.has-label{
@@ -818,8 +820,8 @@ body{
   align-items:center;padding-right:1.15em;
 }
 .cc-slot{
-  width:1.45em;height:1.15em;border:2px dashed var(--g2);border-radius:9px;
-  background:#f2fbf7;font-size:.78em;
+  width:1.75em;height:1.4em;border:2px dashed var(--g2);border-radius:10px;
+  background:#f2fbf7;font-size:.8em;
   display:inline-flex;align-items:center;justify-content:center;
 }
 .cc-slot.filled{border-style:solid;background:#e9fbf3;color:var(--g2-dark);animation:pop .3s ease}
@@ -923,14 +925,14 @@ body{
 .bal-rope{display:block;width:2.5px;height:15px;background:var(--g2);border-radius:2px}
 .bal-pan{
   background:#fff;border:2.5px solid var(--g2);border-radius:15px;
-  padding:13px 12px;min-width:88px;text-align:center;
+  padding:13px 14px;min-width:102px;text-align:center;
   font-size:clamp(17px,4.8vw,23px);font-weight:900;color:var(--ink);
   box-shadow:0 3px 10px rgba(12,166,120,.12);
 }
 .bal-pan .bal-slot{
   display:inline-flex;align-items:center;justify-content:center;
-  min-width:1.6em;min-height:1.3em;border:2px dashed var(--g2);
-  border-radius:9px;color:var(--g2);background:#f2fbf7;
+  min-width:2.6em;min-height:1.5em;padding:0 .14em;box-sizing:border-box;
+  border:2px dashed var(--g2);border-radius:11px;color:var(--g2);background:#f2fbf7;
 }
 .bal-pan .bal-slot.filled{
   border-style:solid;background:#e9fbf3;color:var(--g2-dark);animation:pop .3s ease;
