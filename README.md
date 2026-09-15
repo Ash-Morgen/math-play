@@ -53,6 +53,7 @@
 math-play/
 ├── index.html          数感训练（独立站点）
 ├── app.js  styles.css  数感训练的逻辑与样式
+├── hint.js             ★ 渐进提示引擎（两站共用：答错给提示不给答案）
 ├── grade2.html         二年级闯关（独立站点）
 ├── grade2.js           ★ 玩法定义（MODES 数组）+ 主流程 + 分页 + 家长锁
 ├── grade2.css          ★ 二年级全部样式（已内联基础样式，不依赖 styles.css）
@@ -61,11 +62,12 @@ math-play/
 ├── balance.js          ★ 数字天平引擎
 ├── mine.js             ★ 宝石矿工引擎（限时多关）
 ├── match.js            ★ 乘法消除引擎（三关递进）
-├── sw.js               Service Worker（network-first，缓存名 mathplay-v3）
+├── sw.js               Service Worker（network-first，缓存名 mathplay-v4）
 ├── manifest.json       PWA 清单
 ├── icon.svg            图标
 ├── test_modes.js       ★ 自测：各类题目生成器校验
 ├── test_match.js       ★ 自测：消除玩法专项（值集自洽 / 有解 / 零死局）
+├── test_hint.js        ★ 自测：提示文案**不泄题**（逐题扫描答案 + 揭晓语含答案）
 ├── touch-test.html     触摸自检页（手机上点不动时用它定位）
 ├── demo-mine.html      宝石矿工早期原型（保留作参考，未接入正式页面）
 └── docs/
@@ -79,6 +81,7 @@ math-play/
 ### 脚本加载顺序（grade2.html）
 
 ```html
+<script src="hint.js"></script>        <!-- 最先：暴露 HintEngine（两站共用） -->
 <script src="drag.js"></script>        <!-- 必须先：暴露 DragEngine 与 _utils -->
 <script src="drag-extra.js"></script>  <!-- 挂在 DragEngine.mount 上 -->
 <script src="balance.js"></script>     <!-- 同上，认领 type:'balance' -->
@@ -87,7 +90,7 @@ math-play/
 <script src="grade2.js"></script>      <!-- 最后：定义 MODES 并启动 -->
 ```
 
-**顺序不能乱**：后加载的引擎通过包装 `DragEngine.mount` 认领自己的题型。
+**顺序不能乱**：后加载的引擎通过包装 `DragEngine.mount` 认领自己的题型；`hint.js` 要排在业务脚本前（`grade2.js`/`app.js` 运行时就取 `window.HintEngine`）。
 
 ---
 
@@ -109,9 +112,10 @@ python -m http.server 8899 --bind 0.0.0.0
 ```bash
 node test_modes.js     # 所有模式：题目必含正确答案、选项无重复、竖式/天平必须成立
 node test_match.js     # 消除玩法：值集自洽、棋盘必有解、模拟整局零死局
+node test_hint.js      # 提示文案：逐题扫描「提示里有没有混进答案」+ 揭晓语必须含答案
 ```
 
-两个脚本都是**从源码里抽纯逻辑段**再跑，所以改了函数名或 `const`/`var` 导致抽取锚点失效时，要同步改脚本里的锚点（见「踩坑记录」）。
+三个脚本都是**从源码里抽纯逻辑段**再跑，所以改了函数名或 `const`/`var` 导致抽取锚点失效时，要同步改脚本里的锚点（见「踩坑记录」）。
 
 ### 部署
 
@@ -137,6 +141,7 @@ curl -s https://ash-morgen.github.io/math-play/grade2.js | grep -c "关键字"
 4. **玩法要定期清理同质化**。同一引擎只是参数不同的，合并成关卡递进；形式与功能都重复的，直接删。
 5. **反馈要即时且分层**。消除类玩法做完整奖励链：碎裂 → 宝石飞出 → 计分板弹跳 → 飘字 → 连击光晕。快节奏玩法里，反馈慢半秒爽感就没了。
 6. **移动端要单独验**。桌面全绿不等于手机能用：手指有 5~15px 抖动、WebView 可能不发 Pointer Events、窄屏下卡片会小到点不中。见「踩坑记录 · 移动端三章」。
+7. **答错要给提示，不给答案**。不是感觉，是有实验的：同一个 AI 助教，直接给答案 → 练习分 +48% 但期末 **−17%**；只给提示引导 → 练习 +127% 且期末不降（Bastani et al. 2025, PNAS）。所以：连错到上限才揭晓，**用提示答对不计星**（星 = 独立答对），家长页把两者分开展示。
 
 ---
 
@@ -145,5 +150,5 @@ curl -s https://ash-morgen.github.io/math-play/grade2.js | grep -c "关键字"
 | 文档 | 内容 |
 |---|---|
 | [docs/开发手册.md](docs/开发手册.md) | 架构、各引擎 API、加新玩法的完整步骤、部署细节 |
-| [docs/踩坑记录.md](docs/踩坑记录.md) | 27 个坑：拖拽、移动端、题目生成、动画、部署、工具链 |
+| [docs/踩坑记录.md](docs/踩坑记录.md) | 36 个坑：拖拽、移动端、题目生成、渐进提示、动画、部署、工具链 |
 | [docs/开发日志.md](docs/开发日志.md) | 从数感训练到 20 个玩法的完整演进过程与每次决策的原因 |

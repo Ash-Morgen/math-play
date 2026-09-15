@@ -68,8 +68,10 @@
       id: 3, emoji: '⭐', name: '100 以内加减', desc: '整十数与两位数',
       gen() {
         const m = rnd(3);
-        if (m === 0) { const a = ri(2, 8) * 10, b = ri(1, 9) * 10; return { a: a, b: b, op: '+', ans: a + b }; }
-        if (m === 1) { const a = ri(2, 9) * 10, b = ri(1, 9) * 10; return { a: a, b: b, op: '-', ans: a - b }; }
+        // 整十数相加：和控制在 100 以内，才是「100 以内加减」
+        if (m === 0) { const a = ri(2, 7) * 10, b = ri(1, 9 - a / 10) * 10; return { a: a, b: b, op: '+', ans: a + b }; }
+        // 整十数相减：必须先取减数再取被减数，否则会出 30-70 这种负数（二年级不该出现）
+        if (m === 1) { const b = ri(1, 8) * 10, a = b + ri(1, 9 - b / 10) * 10; return { a: a, b: b, op: '-', ans: a - b }; }
         const a = ri(2, 6) * 10 + ri(1, 9), b = ri(1, 3) * 10; return { a: a, b: b, op: '+', ans: a + b };
       }
     }
@@ -77,7 +79,7 @@
 
   /* ================= 存储 ================= */
   const KEY = 'mathplay.v1';
-  let DB = { stars: 0, answered: 0, correct: 0, level: 1, days: {} };
+  let DB = { stars: 0, answered: 0, correct: 0, hints: 0, level: 1, days: {} };
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
@@ -89,9 +91,16 @@
   }
   function recordDay(correct, stars) {
     const k = todayKey();
-    const d = DB.days[k] || (DB.days[k] = { answered: 0, correct: 0, stars: 0 });
+    const d = DB.days[k] || (DB.days[k] = { answered: 0, correct: 0, stars: 0, hints: 0 });
     d.answered++; if (correct) d.correct++; d.stars += stars;
     DB.answered++; if (correct) DB.correct++; DB.stars += stars;
+  }
+  /* 提示使用单独计数：星数（独立答对）与提示数配对看，才能分辨「会了」和「被扶着会了」 */
+  function countHint() {
+    const k = todayKey();
+    const d = DB.days[k] || (DB.days[k] = { answered: 0, correct: 0, stars: 0, hints: 0 });
+    d.hints = (d.hints || 0) + 1;
+    DB.hints = (DB.hints || 0) + 1;
   }
 
   /* ================= 题目呈现 ================= */
@@ -169,7 +178,7 @@
     const lv = LEVELS.find((l) => l.id === levelId) || LEVELS[0];
     DB.level = lv.id;
     save();
-    cur = { level: lv, idx: 0, q: null, stars: 0, correct: 0, combo: 0, locked: false };
+    cur = { level: lv, idx: 0, q: null, stars: 0, correct: 0, combo: 0, locked: false, hintCount: 0, tries: 0, hintShown: 0, hintCounted: false };
     audio(); // 用户交互后解锁音频
     show('#view-quiz');
     nextQuestion();
@@ -188,6 +197,9 @@
   function renderQuestion() {
     const q = cur.q;
     cur.locked = false;
+    cur.tries = 0;           // 本题已答错次数
+    cur.hintShown = 0;       // 本题已给到第几级提示
+    cur.hintCounted = false; // 提示是否已计入统计（每题只计一次）
     $('#stageTag').textContent = STAGE_LABEL[q.cpa];
     $('#progress').style.width = (cur.idx / ROUND * 100) + '%';
     $('#quizStars').textContent = cur.stars;
@@ -211,36 +223,72 @@
     });
   }
 
+  /* ---------- 渐进提示（缺 hint.js 时退化成旧行为，不会白屏） ---------- */
+  const HINT_FALLBACK = {
+    MAX_CHOICE: 1,
+    text: () => '再想一想',
+    reveal: () => '先看明白这题，下一题继续'
+  };
+  const HINT = () => window.HintEngine || HINT_FALLBACK;
+
+  function markHint(level) {
+    const h = HINT();
+    if (!cur.hintCounted) { countHint(); cur.hintCounted = true; cur.hintCount++; }
+    cur.hintShown = level;
+    $('#feedback').className = 'feedback hint';
+    $('#feedback').textContent = '💡 ' + h.text(cur.q, cur.level, level);
+    tone(880, 0, 0.06, 'sine', 0.05);
+  }
+
   function choose(val, btn) {
     if (!cur || cur.locked) return;
-    cur.locked = true;
     const q = cur.q;
-    const ok = val === q.ans;
-    document.querySelectorAll('.ans-btn').forEach((b) => {
-      b.disabled = true;
-      if (Number(b.dataset.val) === q.ans) b.classList.add('correct');
-    });
+    if (val === q.ans) {
+      document.querySelectorAll('.ans-btn').forEach((b) => { b.disabled = true; });
+      if (btn) btn.classList.add('correct');
+      return settle(true);
+    }
+    // 答错：只淘汰这个选项，不揭晓答案
+    cur.tries++;
+    if (btn) { btn.classList.add('wrong'); btn.disabled = true; }
+    const left = document.querySelectorAll('.ans-btn:not([disabled])').length;
+    if (cur.tries >= HINT().MAX_CHOICE || left <= 1) {
+      document.querySelectorAll('.ans-btn').forEach((b) => {
+        b.disabled = true;
+        if (Number(b.dataset.val) === q.ans) b.classList.add('correct');
+      });
+      return settle(false);
+    }
+    markHint(cur.tries);
+    $('#quizStars').textContent = cur.stars;
+  }
 
+  function settle(ok) {
+    if (cur.locked) return;
+    cur.locked = true;
+    const usedHint = cur.hintShown > 0;
     if (ok) {
-      cur.stars++; cur.correct++; cur.combo++;
-      btn.classList.add('correct');
+      cur.correct++;
+      if (usedHint) cur.combo = 0;            // 有提示帮忙，不计星、不算连对
+      else { cur.stars++; cur.combo++; }
       sfxOk();
       $('#feedback').className = 'feedback';
-      $('#feedback').textContent = cur.combo >= 3 ? '连对 ' + cur.combo + ' 题！🔥' : '答对啦 👍';
-      if (cur.combo >= 3) { sfxCombo(); popCombo(cur.combo); }
-      recordDay(true, 1);
+      $('#feedback').textContent = usedHint
+        ? '答对啦 👍 这题有提示帮忙，下次自己试试'
+        : (cur.combo >= 3 ? '连对 ' + cur.combo + ' 题！🔥' : '答对啦 👍');
+      if (!usedHint && cur.combo >= 3) { sfxCombo(); popCombo(cur.combo); }
+      recordDay(true, usedHint ? 0 : 1);
     } else {
       cur.combo = 0;
-      btn.classList.add('wrong');
       sfxBad();
       $('#feedback').className = 'feedback bad';
-      $('#feedback').textContent = '再想想，答案是 ' + q.ans;
+      $('#feedback').textContent = HINT().reveal(cur.q, cur.level);
       recordDay(false, 0);
     }
     save();
     $('#quizStars').textContent = cur.stars;
 
-    const delay = ok ? (cur.combo >= 3 ? 900 : 700) : 1500;
+    const delay = ok ? (usedHint ? 1150 : (cur.combo >= 3 ? 900 : 700)) : 2400;
     setTimeout(() => { cur.idx++; nextQuestion(); }, delay);
   }
 
@@ -254,17 +302,19 @@
 
   function finishRound() {
     $('#progress').style.width = '100%';
-    const s = cur.stars;
-    let emoji = '💪', title = '继续加油！', stars = '⭐'.repeat(Math.max(1, Math.round(s / 3.4)));
-    if (s === ROUND) { emoji = '🏆'; title = '满分！太厉害了'; stars = '⭐⭐⭐⭐⭐'; }
-    else if (s >= 8) { emoji = '🎉'; title = '真棒！'; }
-    else if (s >= 5) { emoji = '👍'; title = '不错哦！'; }
-    if (s === ROUND) sfxWin(); else if (s >= 8) sfxOk();
+    const s = cur.stars;        // 星 = 不靠提示独立答对
+    const c = cur.correct;      // 答对题数（含用提示后答对）
+    let emoji = '💪', title = '继续加油！', stars = '⭐'.repeat(Math.max(1, Math.round(c / 3.4)));
+    if (c === ROUND && s === ROUND) { emoji = '🏆'; title = '满分！太厉害了'; stars = '⭐⭐⭐⭐⭐'; }
+    else if (c >= 8) { emoji = '🎉'; title = '真棒！'; }
+    else if (c >= 5) { emoji = '👍'; title = '不错哦！'; }
+    if (c === ROUND && s === ROUND) sfxWin(); else if (c >= 8) sfxOk();
 
     $('#resultEmoji').textContent = emoji;
     $('#resultTitle').textContent = title;
     $('#resultStars').textContent = stars;
-    $('#resultSub').textContent = '答对 ' + s + ' / ' + ROUND + ' 题　·　获得 ' + s + ' 颗星';
+    $('#resultSub').textContent = '答对 ' + c + ' / ' + ROUND + ' 题　·　独立答对 ' + s +
+      ' 题　·　获得 ' + s + ' 颗星' + (cur.hintCount ? '　·　用了 ' + cur.hintCount + ' 次提示' : '');
     show('#view-result');
   }
 
@@ -289,10 +339,13 @@
 
   function renderParent() {
     const acc = DB.answered ? Math.round(DB.correct / DB.answered * 100) + '%' : '—';
+    const solo = DB.answered ? Math.round((DB.stars || 0) / DB.answered * 100) + '%' : '—';
     $('#parentStats').innerHTML =
       '<div class="p-row"><span>总星星</span><span>' + DB.stars + '</span></div>' +
       '<div class="p-row"><span>累计答题</span><span>' + DB.answered + ' 题</span></div>' +
       '<div class="p-row"><span>累计正确率</span><span>' + acc + '</span></div>' +
+      '<div class="p-row"><span>独立答对率</span><span>' + solo + '</span></div>' +
+      '<div class="p-row"><span>用过提示</span><span>' + (DB.hints || 0) + ' 次</span></div>' +
       '<div class="p-row"><span>练习天数</span><span>' + Object.keys(DB.days).length + ' 天</span></div>' +
       '<div class="p-row"><span>上次难度</span><span>' +
         ((LEVELS.find((l) => l.id === DB.level) || LEVELS[0]).name) + '</span></div>';
@@ -305,7 +358,7 @@
         const d = DB.days[k];
         const r = d.answered ? Math.round(d.correct / d.answered * 100) + '%' : '—';
         return '<div class="day-row"><span class="d">' + k + '</span><span>' +
-          d.answered + ' 题 · 正确率 ' + r + ' · ⭐' + d.stars + '</span></div>';
+          d.answered + ' 题 · 正确率 ' + r + ' · ⭐' + d.stars + (d.hints ? ' · 💡' + d.hints : '') + '</span></div>';
       }).join('');
     }
     show('#view-parent');
@@ -316,8 +369,9 @@
     if ($('#view-quiz').classList.contains('active')) {
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= 4) {
-        const btns = document.querySelectorAll('.ans-btn');
-        if (btns[n - 1] && !btns[n - 1].disabled) btns[n - 1].click();
+        // 答错的选项会被禁用，按「还亮着的」顺序数，数字键才一直对得上
+        const btns = Array.from(document.querySelectorAll('.ans-btn')).filter((b) => !b.disabled);
+        if (btns[n - 1]) btns[n - 1].click();
       }
     } else if (e.key === 'Enter') {
       if ($('#view-result').classList.contains('active')) $('#btnAgain').click();
@@ -332,7 +386,7 @@
   $('#btnParentBack').addEventListener('click', renderHome);
   $('#btnReset').addEventListener('click', () => {
     if (confirm('确定清空全部练习记录？')) {
-      DB = { stars: 0, answered: 0, correct: 0, level: 1, days: {} };
+      DB = { stars: 0, answered: 0, correct: 0, hints: 0, level: DB.level || 1, days: {} };
       save(); renderParent();
     }
   });

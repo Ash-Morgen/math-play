@@ -151,6 +151,11 @@ body{
   padding-top:8px;color:var(--green);
 }
 .feedback.bad{color:var(--red)}
+/* 渐进提示：答错后给方向，不给答案（文案可能两行，所以放开固定高度） */
+.feedback.hint{
+  color:var(--blue-dark);font-size:14px;line-height:1.35;font-weight:700;
+  height:auto;min-height:26px;padding:8px 6px 4px;
+}
 
 /* 连击 */
 .combo{

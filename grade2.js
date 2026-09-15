@@ -4,7 +4,7 @@
 (function () {
   'use strict'
 
-  const VER = 'r8';
+  const VER = 'r9';   // r9：答错改渐进提示（不再直接报答案）+ 提示/星数分开统计
 
   /* ---------- 设备自检（排查手机端问题用） ---------- */
   const DEBUG = /[?&]debug=1/.test(location.search);
@@ -664,7 +664,7 @@
   }
 
    // v2：知识点按沪教五四学制图谱重排
-  let DB = { stars: 0, answered: 0, correct: 0, days: {}, modes: {}, unlocked: [] };
+  let DB = { stars: 0, answered: 0, correct: 0, hints: 0, days: {}, modes: {}, unlocked: [] };
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
@@ -675,11 +675,20 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { } }
   function record(correct, stars, modeId) {
     const k = todayKey();
-    const d = DB.days[k] || (DB.days[k] = { answered: 0, correct: 0, stars: 0 });
+    const d = DB.days[k] || (DB.days[k] = { answered: 0, correct: 0, stars: 0, hints: 0 });
     d.answered++; if (correct) d.correct++; d.stars += stars;
-    const m = DB.modes[modeId] || (DB.modes[modeId] = { answered: 0, correct: 0 });
+    const m = DB.modes[modeId] || (DB.modes[modeId] = { answered: 0, correct: 0, hints: 0 });
     m.answered++; if (correct) m.correct++;
     DB.answered++; if (correct) DB.correct++; DB.stars += stars;
+  }
+  /* 提示使用单独计数：它衡量的是「独立作答」的反面，与星数（独立答对）配对看 */
+  function countHint(modeId) {
+    const k = todayKey();
+    const d = DB.days[k] || (DB.days[k] = { answered: 0, correct: 0, stars: 0, hints: 0 });
+    d.hints = (d.hints || 0) + 1;
+    const m = DB.modes[modeId] || (DB.modes[modeId] = { answered: 0, correct: 0, hints: 0 });
+    m.hints = (m.hints || 0) + 1;
+    DB.hints = (DB.hints || 0) + 1;
   }
 
   /* ================= 状态机 ================= */
@@ -695,7 +704,7 @@
     if (m.kind === 'match') return startMatch(m);
     if (m.kind === 'mine') return startMine(m);
     // 拖拽型玩法一次操作量大，轮次短一些（默认 10 题）
-    cur = { mode: m, idx: 0, total: m.round || ROUND, q: null, stars: 0, correct: 0, combo: 0, locked: false };
+    cur = { mode: m, idx: 0, total: m.round || ROUND, q: null, stars: 0, correct: 0, combo: 0, locked: false, hintCount: 0, tries: 0, hintShown: 0, hintCounted: false };
     audio();
     show('#view-quiz');
     nextQuestion();
@@ -774,6 +783,9 @@
   function renderQuestion() {
     const q = cur.q;
     cur.locked = false;
+    cur.tries = 0;          // 本题已答错次数
+    cur.hintShown = 0;      // 本题已给到第几级提示
+    cur.hintCounted = false; // 提示是否已计入统计（每题只计一次）
     $('#stageTag').textContent = cur.mode.name;
     $('#progress').style.width = (cur.idx / cur.total * 100) + '%';
     $('#quizStars').textContent = cur.stars;
@@ -782,13 +794,8 @@
 
     // ---- 拖拽型：交给 DragEngine 渲染 ----
     if (q.kind === 'drag') {
-      $('#question').innerHTML = '';
-      const wrap = $('#answers');
-      wrap.innerHTML = '';
-      wrap.style.gridTemplateColumns = '';
-      window.DragEngine.mount($('#question'), q, function (ok) {
-        resolveAnswer(ok, '再试一次，注意题目要求');
-      });
+      clearStage();
+      mountDrag();
       return;
     }
 
@@ -809,39 +816,98 @@
     });
   }
 
+  function clearStage() {
+    $('#question').innerHTML = '';
+    const wrap = $('#answers');
+    wrap.innerHTML = '';
+    wrap.style.gridTemplateColumns = '';
+  }
+
+  /* ---------- 提示引擎（缺 hint.js 时退化成旧行为，不会白屏） ---------- */
+  const HINT_FALLBACK = {
+    MAX_CHOICE: 1, MAX_DRAG: 1,
+    text: () => '再试一次',
+    reveal: () => '先看明白这题，下一题继续'
+  };
+  const HINT = () => window.HintEngine || HINT_FALLBACK;
+
+  /* 显示一级提示，并把「用过提示」计入统计（每题一次） */
+  function markHint(level) {
+    const h = HINT();
+    if (!cur.hintCounted) { countHint(cur.mode.id); cur.hintCounted = true; cur.hintCount++; }
+    cur.hintShown = level;
+    $('#feedback').className = 'feedback hint';
+    $('#feedback').textContent = '💡 ' + h.text(cur.q, cur.mode, level);
+    try { window.Sfx.tick(); } catch (e) { }
+  }
+
+  /* 拖拽题：把同一道题重新挂一遍，给孩子重做一次的机会（题目数值不变） */
+  function mountDrag() { window.DragEngine.mount($('#question'), cur.q, dragDone); }
+
+  function dragDone(ok) {
+    if (cur.locked) return;
+    if (ok) return settle(true);
+    cur.tries++;
+    if (cur.tries >= HINT().MAX_DRAG) return settle(false);
+    // 还没到上限 → 给提示 + 重挂，不推进
+    markHint(cur.tries);
+    clearStage();
+    setTimeout(mountDrag, 260);
+  }
+
   function choose(val, btn) {
     if (!cur || cur.locked) return;
     const q = cur.q;
-    const ok = val === String(q.ans);
-    document.querySelectorAll('.ans-btn').forEach((b) => {
-      b.disabled = true;
-      if (b.dataset.val === String(q.ans)) b.classList.add('correct');
-    });
-    if (!ok && btn) btn.classList.add('wrong');
-    resolveAnswer(ok, '再看看，答案是 ' + q.ans);
+    if (val === String(q.ans)) {
+      document.querySelectorAll('.ans-btn').forEach((b) => { b.disabled = true; });
+      if (btn) btn.classList.add('correct');
+      return settle(true);
+    }
+    // 答错：只淘汰这一个选项，不揭晓答案
+    cur.tries++;
+    if (btn) { btn.classList.add('wrong'); btn.disabled = true; }
+    const left = document.querySelectorAll('.ans-btn:not([disabled])').length;
+    if (cur.tries >= HINT().MAX_CHOICE || left <= 1) {
+      document.querySelectorAll('.ans-btn').forEach((b) => {
+        b.disabled = true;
+        if (b.dataset.val === String(q.ans)) b.classList.add('correct');
+      });
+      return settle(false);
+    }
+    markHint(cur.tries);
+    $('#quizStars').textContent = cur.stars;
   }
 
-  // 选择题与拖拽题共用的结算入口
-  function resolveAnswer(ok, failMsg) {
+  // 选择题与拖拽题共用的结算入口（ok=是否答对）
+  function settle(ok) {
     if (cur.locked) return;
     cur.locked = true;
+    const usedHint = cur.hintShown > 0;
     if (ok) {
-      cur.stars++; cur.correct++; cur.combo++;
+      cur.correct++;
+      if (usedHint) {
+        cur.combo = 0;                       // 有提示帮忙，不计星、不算连对
+      } else {
+        cur.stars++; cur.combo++;
+      }
       sfxOk();
       $('#feedback').className = 'feedback';
-      $('#feedback').textContent = cur.combo >= 3 ? '连对 ' + cur.combo + ' 题！🔥' : '答对啦 👍';
-      if (cur.combo >= 3) { sfxCombo(); popCombo(cur.combo); }
-      record(true, 1, cur.mode.id);
+      $('#feedback').textContent = usedHint
+        ? '答对啦 👍 这题有提示帮忙，下次自己试试'
+        : (cur.combo >= 3 ? '连对 ' + cur.combo + ' 题！🔥' : '答对啦 👍');
+      if (!usedHint && cur.combo >= 3) { sfxCombo(); popCombo(cur.combo); }
+      record(true, usedHint ? 0 : 1, cur.mode.id);
     } else {
       cur.combo = 0;
       sfxBad();
       $('#feedback').className = 'feedback bad';
-      $('#feedback').textContent = failMsg || '再试一次';
+      $('#feedback').textContent = HINT().reveal(cur.q, cur.mode);
       record(false, 0, cur.mode.id);
     }
     save();
     $('#quizStars').textContent = cur.stars;
-    setTimeout(() => { cur.idx++; nextQuestion(); }, ok ? 820 : 1700);
+    const wait = ok ? (usedHint ? 1150 : 820) : 2400;   // 揭晓语要留够读完的时间
+    setTimeout(() => { cur.idx++; nextQuestion(); }, wait);
   }
 
   function popCombo(n) {
@@ -854,17 +920,19 @@
 
   function finishRound() {
     $('#progress').style.width = '100%';
-    const s = cur.stars;
-    let emoji = '💪', title = '继续加油！', stars = '⭐'.repeat(Math.max(1, Math.round(s / 3.4)));
+    const s = cur.stars;        // 星 = 不靠提示独立答对
+    const c = cur.correct;      // 答对题数（含用提示后答对）
     const full = cur.total;
-    if (s === full) { emoji = '🏆'; title = '满分！太厉害了'; stars = '⭐⭐⭐⭐⭐'; }
-    else if (s >= full * 0.8) { emoji = '🎉'; title = '真棒！'; }
-    else if (s >= full * 0.5) { emoji = '👍'; title = '不错哦！'; }
-    if (s === full) sfxWin(); else if (s >= full * 0.8) sfxOk();
+    let emoji = '💪', title = '继续加油！', stars = '⭐'.repeat(Math.max(1, Math.round(c / 3.4)));
+    if (c === full && s === full) { emoji = '🏆'; title = '满分！太厉害了'; stars = '⭐⭐⭐⭐⭐'; }
+    else if (c >= full * 0.8) { emoji = '🎉'; title = '真棒！'; }
+    else if (c >= full * 0.5) { emoji = '👍'; title = '不错哦！'; }
+    if (c === full && s === full) sfxWin(); else if (c >= full * 0.8) sfxOk();
     $('#resultEmoji').textContent = emoji;
     $('#resultTitle').textContent = title;
     $('#resultStars').textContent = stars;
-    $('#resultSub').textContent = '「' + cur.mode.name + '」答对 ' + s + ' / ' + full + ' 题　·　获得 ' + s + ' 颗星';
+    $('#resultSub').textContent = '「' + cur.mode.name + '」答对 ' + c + ' / ' + full + ' 题　·　独立答对 ' + s +
+      ' 题　·　获得 ' + s + ' 颗星' + (cur.hintCount ? '　·　用了 ' + cur.hintCount + ' 次提示' : '');
     show('#view-result');
   }
 
@@ -953,10 +1021,14 @@
 
   function renderParent() {
     const acc = DB.answered ? Math.round(DB.correct / DB.answered * 100) + '%' : '—';
+    // 独立答对率 = 星星（不靠提示答对的题数）/ 总答题数 —— 和「累计正确率」一起看才有意义
+    const solo = DB.answered ? Math.round((DB.stars || 0) / DB.answered * 100) + '%' : '—';
     $('#parentStats').innerHTML =
       '<div class="p-row"><span>总星星</span><span>' + DB.stars + '</span></div>' +
       '<div class="p-row"><span>累计答题</span><span>' + DB.answered + ' 题</span></div>' +
       '<div class="p-row"><span>累计正确率</span><span>' + acc + '</span></div>' +
+      '<div class="p-row"><span>独立答对率</span><span>' + solo + '</span></div>' +
+      '<div class="p-row"><span>用过提示</span><span>' + (DB.hints || 0) + ' 次</span></div>' +
       '<div class="p-row"><span>练习天数</span><span>' + Object.keys(DB.days).length + ' 天</span></div>';
 
     const keys = Object.keys(DB.days).sort().reverse().slice(0, 7);
@@ -964,19 +1036,20 @@
       const d = DB.days[k];
       const r = d.answered ? Math.round(d.correct / d.answered * 100) + '%' : '—';
       return '<div class="day-row"><span class="d">' + k + '</span><span>' + d.answered +
-        ' 题 · 正确率 ' + r + ' · ⭐' + d.stars + '</span></div>';
+        ' 题 · 正确率 ' + r + ' · ⭐' + d.stars + (d.hints ? ' · 💡' + d.hints : '') + '</span></div>';
     }).join('') : '<div class="p-row"><span>还没有练习记录</span><span>—</span></div>');
 
     const rows = MODES.filter((m) => DB.modes[m.id] && DB.modes[m.id].answered >= 5)
       .map((m) => {
         const s = DB.modes[m.id];
-        return { unit: m.unit.slice(0, 1), name: m.name, r: Math.round(s.correct / s.answered * 100), n: s.answered };
+        return { unit: m.unit.slice(0, 1), name: m.name, r: Math.round(s.correct / s.answered * 100), n: s.answered, h: s.hints || 0 };
       }).sort((a, b) => a.r - b.r);
     $('#parentModes').innerHTML = '<div class="card-title">知识点掌握（至少 5 题）</div>' +
       (rows.length ? rows.map((x) => '<div class="day-row"><span class="d">' + x.unit + ' · ' + x.name +
-        '</span><span>' + x.r + '% (' + x.n + '题) ' + (x.r >= 85 ? '✅' : x.r >= 60 ? '⚠️' : '❗') +
+        '</span><span>' + x.r + '% (' + x.n + '题' + (x.h ? ' · 💡' + x.h : '') + ') ' +
+        (x.r >= 85 ? '✅' : x.r >= 60 ? '⚠️' : '❗') +
         '</span></div>').join('') : '<div class="p-row"><span>数据还不够</span><span>—</span></div>');
-    
+
     const pv = document.getElementById('parentEnv');
     if (pv) pv.textContent = '版本 ' + VER + '　|　' + envText();
     show('#view-parent');
@@ -987,8 +1060,9 @@
     if ($('#view-quiz').classList.contains('active')) {
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= 4) {
-        const btns = document.querySelectorAll('.ans-btn');
-        if (btns[n - 1] && !btns[n - 1].disabled) btns[n - 1].click();
+        // 答错的选项会被禁用，所以按「还亮着的」顺序数，数字键才一直对得上
+        const btns = Array.from(document.querySelectorAll('.ans-btn')).filter((b) => !b.disabled);
+        if (btns[n - 1]) btns[n - 1].click();
       }
     } else if (e.key === 'Enter' && $('#view-result').classList.contains('active')) {
       $('#btnAgain').click();
@@ -1018,7 +1092,7 @@
   }
   $('#btnReset').addEventListener('click', () => {
     if (confirm('确定清空全部练习记录？')) {
-      DB = { stars: 0, answered: 0, correct: 0, days: {}, modes: {} };
+      DB = { stars: 0, answered: 0, correct: 0, hints: 0, days: {}, modes: {}, unlocked: [] };
       save(); renderParent();
     }
   });
