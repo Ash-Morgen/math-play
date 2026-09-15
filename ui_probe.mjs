@@ -39,8 +39,49 @@ async function main() {
   await send('Network.enable');
 
   const flow = process.argv[2] || 'index';
-  const url = flow === 'index' ? BASE + '/index.html?t=' + Date.now() : BASE + '/grade2.html?t=' + Date.now();
+  const url = flow === 'grade2' ? BASE + '/grade2.html?t=' + Date.now() : BASE + '/index.html?t=' + Date.now();
   const out = { flow, url, steps: [], consoleErrors: [] };
+
+  /* ---------- 专用：手机视口下的提示卡观感（先设视口再答题，拿到的就是孩子看到的画面） ---------- */
+  if (flow === 'hint375') {
+    await send('Emulation.setDeviceMetricsOverride', { width: 375, height: 667, deviceScaleFactor: 2, mobile: true });
+    await send('Page.navigate', { url });
+    await sleep(1400);
+    await evaluate(`document.querySelectorAll('.level-btn')[0].click()`);
+    await sleep(400);
+    const rr = await evaluate(`(function(){
+      function answerOf(){
+        const t = document.querySelector('#question').innerText.replace(/\\s/g,' ');
+        const m = t.match(/(\\d+)\\s*([+\\u2212-])\\s*(\\d+)\\s*=/);
+        if(m) return m[2]==='+' ? Number(m[1])+Number(m[3]) : Number(m[1])-Number(m[3]);
+        const emo = document.querySelector('#question').innerText.match(/[\\u{1F300}-\\u{1FAFF}\\u2600-\\u27BF]/gu) || [];
+        return emo.length || null;
+      }
+      const ans = answerOf();
+      const wrong = [...document.querySelectorAll('.ans-btn')].find(b=>Number(b.dataset.val)!==ans);
+      wrong.click();
+      const hb=document.querySelector('#hintBar'), r=hb.getBoundingClientRect();
+      const q=document.querySelector('#question').getBoundingClientRect();
+      const a=document.querySelector('#answers').getBoundingClientRect();
+      return JSON.stringify({
+        wrongClicked: wrong.textContent, hintText: hb.innerText.replace(/\\n/g,' '),
+        hintH: Math.round(r.height), hintW: Math.round(r.width), hintFontSize: getComputedStyle(hb).fontSize,
+        hintBg: getComputedStyle(hb).backgroundColor, hintBorder: getComputedStyle(hb).borderTopColor+' '+getComputedStyle(hb).borderTopStyle,
+        gapQuestionToHint: Math.round(r.top - q.bottom), gapHintToAnswers: Math.round(a.top - r.bottom),
+        inView: r.top>=0 && r.bottom<=window.innerHeight,
+        overflowX: document.documentElement.scrollWidth > window.innerWidth
+      });
+    })()`);
+    out.hint375 = JSON.parse(rr);
+    const s = await send('Page.captureScreenshot', { format: 'png' });
+    const fsm = await import('node:fs');
+    out.screenshot = process.env.TEMP + '/mathplay_hint375.png';
+    fsm.writeFileSync(out.screenshot, Buffer.from(s.data, 'base64'));
+    out.jsExceptions = events.filter((e) => e.method === 'Runtime.exceptionThrown').map((e) => e.params.exceptionDetails.text);
+    console.log(JSON.stringify(out, null, 1));
+    ws.close();
+    return;
+  }
 
   await send('Page.navigate', { url });
   await sleep(1400);
@@ -62,17 +103,29 @@ async function main() {
       const btns=[...document.querySelectorAll('.ans-btn')].filter(b=>!b.disabled);
       btns[0].click();
       const fb=document.querySelector('#feedback');
+      const hb=document.querySelector('#hintBar');
+      const r=hb.getBoundingClientRect();
       return JSON.stringify({
         clicked: btns[0].textContent,
-        cls: fb.className,
-        text: fb.textContent,
+        hintBarOn: hb.classList.contains('on'),
+        hintBarText: hb.innerText.replace(/\\n/g,' '),
+        hintBarVisible: r.height>0 && r.width>0,
+        hintBarH: Math.round(r.height),
+        hintBarFontSize: getComputedStyle(hb).fontSize,
+        hintBarBg: getComputedStyle(hb).backgroundColor,
+        hintBarInViewport: r.top>=0 && r.bottom<=window.innerHeight,
+        aboveAnswers: r.bottom <= document.querySelector('#answers').getBoundingClientRect().top,
         disabled: [...document.querySelectorAll('.ans-btn')].filter(b=>b.disabled).length,
         enabledLeft: [...document.querySelectorAll('.ans-btn')].filter(b=>!b.disabled).length,
-        stars: document.querySelector('#quizStars').textContent,
-        hintColor: getComputedStyle(fb).color
+        stars: document.querySelector('#quizStars').textContent
       });
     })()`);
     out.steps.push({ step: '第 1 次答错', result: JSON.parse(r1) });
+    // 答错后立刻截图（这才是孩子看到的画面）
+    const shotA = await send('Page.captureScreenshot', { format: 'png' });
+    const fsA = await import('node:fs');
+    out.shotAfterWrong = process.env.TEMP + '/mathplay_after_wrong.png';
+    fsA.writeFileSync(out.shotAfterWrong, Buffer.from(shotA.data, 'base64'));
 
     // 第 2 次故意答错
     const r2 = await evaluate(`(function(){
@@ -243,13 +296,19 @@ async function main() {
       // grade2 的窄屏布局
       await send('Emulation.setDeviceMetricsOverride', { width: 375, height: 667, deviceScaleFactor: 2, mobile: true });
       await sleep(300);
-      out.narrow = JSON.parse(await evaluate(`JSON.stringify({
-        overflowX: document.documentElement.scrollWidth > window.innerWidth,
-        scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
-        feedbackH: Math.round(document.querySelector('#feedback').getBoundingClientRect().height),
-        feedbackText: document.querySelector('#feedback').textContent.slice(0,60),
-        feedbackInView: (function(){const r=document.querySelector('#feedback').getBoundingClientRect();return r.top>=0 && r.bottom<=window.innerHeight;})()
-      })`));
+      out.narrow = JSON.parse(await evaluate(`(function(){
+        const hb=document.querySelector('#hintBar'); const r=hb.getBoundingClientRect();
+        return JSON.stringify({
+          overflowX: document.documentElement.scrollWidth > window.innerWidth,
+          scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
+          hintOn: hb.classList.contains('on'),
+          hintText: hb.innerText.replace(/\\n/g,' ').slice(0,70),
+          hintH: Math.round(r.height), hintW: Math.round(r.width),
+          hintFontSize: getComputedStyle(hb).fontSize,
+          hintInView: r.top>=0 && r.bottom<=window.innerHeight,
+          answersVisible: (function(){const a=document.querySelector('#answers').getBoundingClientRect();return a.top>=0 && a.bottom<=window.innerHeight+1;})()
+        });
+      })()`));
       const shot0 = await send('Page.captureScreenshot', { format: 'png' });
       const fsx = await import('node:fs');
       const px = process.env.TEMP + '/mathplay_choice_375.png';
@@ -319,13 +378,19 @@ async function main() {
     await evaluate(`(function(){const b=[...document.querySelectorAll('.ans-btn')].filter(x=>!x.disabled); if(b.length>1) b[0].click();})()`);
     await sleep(300);
   }
-  out.narrow = JSON.parse(await evaluate(`JSON.stringify({
-    overflowX: document.documentElement.scrollWidth > window.innerWidth,
-    scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
-    feedbackVisible: (function(){const f=document.querySelector('#feedback'); const r=f.getBoundingClientRect(); return r.height>0 && r.bottom<=window.innerHeight+1 && r.top>=0;})(),
-    feedbackH: Math.round(document.querySelector('#feedback').getBoundingClientRect().height),
-    feedbackText: document.querySelector('#feedback').textContent.slice(0,60)
-  })`));
+  out.narrow = JSON.parse(await evaluate(`(function(){
+    const hb=document.querySelector('#hintBar'); const r=hb.getBoundingClientRect();
+    return JSON.stringify({
+      overflowX: document.documentElement.scrollWidth > window.innerWidth,
+      scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
+      hintOn: hb.classList.contains('on'),
+      hintText: hb.innerText.replace(/\\n/g,' ').slice(0,70),
+      hintH: Math.round(r.height), hintW: Math.round(r.width),
+      hintFontSize: getComputedStyle(hb).fontSize,
+      hintInView: r.top>=0 && r.bottom<=window.innerHeight,
+      answersVisible: (function(){const a=document.querySelector('#answers').getBoundingClientRect();return a.top>=0 && a.bottom<=window.innerHeight+1;})()
+    });
+  })()`));
 
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   const fs = await import('node:fs');

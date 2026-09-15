@@ -791,6 +791,7 @@
     $('#quizStars').textContent = cur.stars;
     $('#feedback').textContent = '';
     $('#feedback').className = 'feedback';
+    clearHint();
 
     // ---- 拖拽型：交给 DragEngine 渲染 ----
     if (q.kind === 'drag') {
@@ -831,14 +832,38 @@
   };
   const HINT = () => window.HintEngine || HINT_FALLBACK;
 
-  /* 显示一级提示，并把「用过提示」计入统计（每题一次） */
+  /* 显示一级提示：写进题目正下方的提示卡（不是选项下面那行小字，那样孩子看不见），
+     并把「用过提示」计入统计（每题一次） */
   function markHint(level) {
     const h = HINT();
     if (!cur.hintCounted) { countHint(cur.mode.id); cur.hintCounted = true; cur.hintCount++; }
-    cur.hintShown = level;
-    $('#feedback').className = 'feedback hint';
-    $('#feedback').textContent = '💡 ' + h.text(cur.q, cur.mode, level);
+    cur.hintShown = Math.max(cur.hintShown, level);
+    const max = (cur.q && cur.q.kind === 'drag') ? h.MAX_DRAG : h.MAX_CHOICE;
+    const bar = $('#hintBar');
+    if (!bar) return;
+    bar.className = 'hint-bar';
+    void bar.offsetWidth;                 // 强制 reflow，让入场动画每次都能重放
+    bar.className = 'hint-bar on';
+    bar.innerHTML = '<span class="hb-icon">💡</span><span>' +
+      '<span class="hb-tag">提示 ' + Math.min(level, max) + '/' + max + '</span>' +
+      h.text(cur.q, cur.mode, level) + '</span>';
+    $('#feedback').textContent = '';
+    $('#feedback').className = 'feedback';
     try { window.Sfx.tick(); } catch (e) { }
+  }
+
+  function clearHint() {
+    const bar = $('#hintBar');
+    if (bar) { bar.className = 'hint-bar'; bar.innerHTML = ''; }
+  }
+
+  /* 拖拽引擎用 Sfx.bad() 表示「这次没做对」。挂在这里，孩子第一次放错就能立刻
+     看到一条文字提示——原来只有引擎内部那一下抖动，等于没有任何文字反馈。 */
+  function dragNudge() {
+    if (!cur || cur.locked || !cur.q) return;
+    if (cur.q.kind !== 'drag') return;
+    if (cur.hintShown >= 1) return;       // 每题只推一次，避免刷屏
+    markHint(1);
   }
 
   /* 拖拽题：把同一道题重新挂一遍，给孩子重做一次的机会（题目数值不变） */
@@ -849,8 +874,8 @@
     if (ok) return settle(true);
     cur.tries++;
     if (cur.tries >= HINT().MAX_DRAG) return settle(false);
-    // 还没到上限 → 给提示 + 重挂，不推进
-    markHint(cur.tries);
+    // 还没到上限 → 给提示（已推过第一级就升级到第二级）+ 重挂，不推进
+    markHint(cur.hintShown >= 1 ? 2 : 1);
     clearStage();
     setTimeout(mountDrag, 260);
   }
@@ -1100,7 +1125,9 @@
   /* ================= 启动 ================= */
   // 供 drag.js 调用音效
   window.Sfx = {
-    ok: sfxOk, bad: sfxBad, win: sfxWin, combo: sfxCombo,
+    ok: sfxOk,
+    bad: function () { sfxBad(); dragNudge(); },   // 拖拽放错 → 立刻推一条文字提示
+    win: sfxWin, combo: sfxCombo,
     tick: function () { tone(880, 0, 0.06, 'sine', 0.05); }
   };
   load();

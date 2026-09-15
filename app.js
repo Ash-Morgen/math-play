@@ -205,6 +205,7 @@
     $('#quizStars').textContent = cur.stars;
     $('#feedback').textContent = '';
     $('#feedback').className = 'feedback';
+    clearHint();
 
     const box = $('#question');
     if (q.cpa === 'C') box.innerHTML = renderConcrete(q);
@@ -231,13 +232,27 @@
   };
   const HINT = () => window.HintEngine || HINT_FALLBACK;
 
+  /* 显示一级提示：写进题目正下方的提示卡（不是选项下面那行小字，那样孩子看不见） */
   function markHint(level) {
     const h = HINT();
     if (!cur.hintCounted) { countHint(); cur.hintCounted = true; cur.hintCount++; }
-    cur.hintShown = level;
-    $('#feedback').className = 'feedback hint';
-    $('#feedback').textContent = '💡 ' + h.text(cur.q, cur.level, level);
+    cur.hintShown = Math.max(cur.hintShown, level);
+    const bar = $('#hintBar');
+    if (!bar) return;
+    bar.className = 'hint-bar';
+    void bar.offsetWidth;                 // 强制 reflow，让入场动画每次都能重放
+    bar.className = 'hint-bar on';
+    bar.innerHTML = '<span class="hb-icon">💡</span><span>' +
+      '<span class="hb-tag">提示 ' + Math.min(level, h.MAX_CHOICE) + '/' + h.MAX_CHOICE + '</span>' +
+      h.text(cur.q, cur.level, level) + '</span>';
+    $('#feedback').textContent = '';
+    $('#feedback').className = 'feedback';
     tone(880, 0, 0.06, 'sine', 0.05);
+  }
+
+  function clearHint() {
+    const bar = $('#hintBar');
+    if (bar) { bar.className = 'hint-bar'; bar.innerHTML = ''; }
   }
 
   function choose(val, btn) {

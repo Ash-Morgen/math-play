@@ -152,10 +152,28 @@ body{
   padding-top:8px;color:var(--green);
 }
 .feedback.bad{color:var(--red)}
-/* 渐进提示：答错后给方向，不给答案（文案可能两行，所以放开固定高度） */
-.feedback.hint{
-  color:var(--blue-dark);font-size:14px;line-height:1.35;font-weight:700;
-  height:auto;min-height:26px;padding:8px 6px 4px;
+
+/* 渐进提示：答错后给方向、不给答案。
+   做成独立提示卡放在题目正下方——孩子眼睛不用离开题目就能看见。
+   （r9 初版把它塞在选项下面当一行 14px 小字，实测「根本注意不到」） */
+.hint-bar{
+  display:none;width:100%;max-width:520px;text-align:left;
+  background:#fff8e6;border:3px dashed var(--amber);border-radius:18px;
+  padding:12px 14px;font-size:clamp(15px,4.3vw,18px);font-weight:800;
+  line-height:1.45;color:#8a5a00;box-shadow:0 4px 14px rgba(255,176,32,.20);
+}
+.hint-bar.on{display:flex;gap:10px;align-items:flex-start;animation:hintPop .32s ease-out}
+.hint-bar .hb-icon{font-size:1.4em;line-height:1;flex:0 0 auto;animation:hintSwing .7s ease-out 1}
+.hint-bar .hb-tag{
+  display:inline-block;background:var(--amber);color:#fff;border-radius:99px;
+  font-size:11px;font-weight:800;padding:2px 8px;margin-right:6px;
+  letter-spacing:.5px;vertical-align:2px;white-space:nowrap;
+}
+@keyframes hintPop{0%{opacity:0;transform:translateY(-10px) scale(.96)}100%{opacity:1;transform:none}}
+@keyframes hintSwing{0%,100%{transform:rotate(0)}25%{transform:rotate(-18deg)}
+  60%{transform:rotate(14deg)}80%{transform:rotate(-6deg)}}
+@media (max-height:640px){
+  .hint-bar{font-size:14px;padding:9px 11px;border-radius:14px}
 }
 
 /* 连击 */
